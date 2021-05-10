@@ -102,7 +102,7 @@ class GridAggregator:
         self._avgmask_tensor = torch.zeros(
             num_channels,
             *self.spatial_shape,
-            dtype=batch.dtype,
+            dtype=torch.float32,
         )
 
     def add_batch(
