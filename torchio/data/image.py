@@ -460,6 +460,9 @@ class Image(dict):
 
     def read_and_check(self, path: TypePath) -> Tuple[torch.Tensor, np.ndarray]:
         tensor, affine = self.reader(path)
+        # Cast to uint8 for LabelMap to save RAM
+        if self.type == LABEL:
+            tensor = tensor.type(torch.uint8)
         tensor = self.parse_tensor_shape(tensor)
         tensor = self._parse_tensor(tensor)
         affine = self._parse_affine(affine)
