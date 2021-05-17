@@ -88,6 +88,10 @@ class GridSampler(PatchSampler):
         cropped_subject[LOCATION] = location
         return cropped_subject
 
+    def set_subject(self, subject: Subject):
+        self.subject = self._pad(subject)
+        self.locations = self._compute_locations(self.subject)
+
     def _pad(self, subject: Subject) -> Subject:
         if self.padding_mode is not None:
             from ...transforms import Pad
