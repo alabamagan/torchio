@@ -257,7 +257,7 @@ class PlotDirective(Directive):
 
 def setup(app):
     setup.app = app
-    setup.config = app.config
+    setup.config = app._config
     setup.confdir = app.confdir
     app.add_directive('plot', PlotDirective)
     app.add_config_value('plot_pre_code', None, True)
@@ -618,7 +618,7 @@ def render_figures(code, code_path, output_dir, output_base, context,
 
 def run(arguments, content, options, state_machine, state, lineno):
     document = state_machine.document
-    config = document.settings.env.config
+    config = document.settings.env._config
     nofigs = 'nofigs' in options
 
     formats = get_plot_formats(config)
