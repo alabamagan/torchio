@@ -41,9 +41,9 @@ class GridAggregator:
 
     @staticmethod
     def parse_overlap_mode(overlap_mode):
-        if overlap_mode not in ('crop', 'average'):
+        if overlap_mode not in ('crop', 'average', 'max'):
             message = (
-                'Overlap mode must be "crop" or "average" but '
+                'Overlap mode must be "crop", "average" or "max" but '
                 f' "{overlap_mode}" was passed'
             )
             raise ValueError(message)
@@ -151,6 +151,17 @@ class GridAggregator:
                     i_ini:i_fin,
                     j_ini:j_fin,
                     k_ini:k_fin] += 1
+        elif self.overlap_mode == 'max':
+            self.initialize_avgmask_tensor(batch)
+            for patch, location in zip(batch, locations):
+                i_ini, j_ini, k_ini, i_fin, j_fin, k_fin = location
+                self._output_tensor[
+                    :,
+                    i_ini:i_fin,
+                    j_ini:j_fin,
+                    k_ini:k_fin] = torch.max(patch,
+                                             self._output_tensor[:,i_ini:i_fin,j_ini:j_fin,k_ini:k_fin])
+
 
     def get_output_tensor(self) -> torch.Tensor:
         """Get the aggregated volume after dense inference."""
