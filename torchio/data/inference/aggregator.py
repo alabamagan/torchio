@@ -152,7 +152,6 @@ class GridAggregator:
                     j_ini:j_fin,
                     k_ini:k_fin] += 1
         elif self.overlap_mode == 'max':
-            self.initialize_avgmask_tensor(batch)
             for patch, location in zip(batch, locations):
                 i_ini, j_ini, k_ini, i_fin, j_fin, k_fin = location
                 self._output_tensor[
@@ -176,6 +175,8 @@ class GridAggregator:
             # true_divide is used instead of / in case the PyTorch version is
             # old and one the operands is int:
             # https://github.com/fepegar/torchio/issues/526
+            # Prevent the _avgmask being zero
+            self._avgmask_tensor[self._avgmask_tensor == 0] = 1
             output = torch.true_divide(
                 self._output_tensor, self._avgmask_tensor)
         else:

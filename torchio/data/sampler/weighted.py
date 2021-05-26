@@ -8,6 +8,7 @@ from ...typing import TypePatchSize
 from ..image import Image
 from ..subject import Subject
 from .sampler import RandomSampler
+from ... import LOCATION
 
 
 class WeightedSampler(RandomSampler):
@@ -56,6 +57,21 @@ class WeightedSampler(RandomSampler):
         super().__init__(patch_size)
         self.probability_map_name = probability_map
         self.cdf = None
+        # For compatibility to aggregator
+        self.patch_overlap = None
+        self.padding_mode = None
+
+    def __len__(self):
+        return self.num_of_patches
+
+    def __getitem__(self, index):
+        if index < self.num_of_patches:
+            return next(self._generate_patches(self.subject, 1))
+
+    def set_subject(self, subject: Subject, num_of_patches: int):
+        self.subject = subject
+        self.num_of_patches = num_of_patches
+
 
     def _generate_patches(
             self,
@@ -178,8 +194,11 @@ class WeightedSampler(RandomSampler):
             cdf: np.ndarray
             ) -> Subject:
         index_ini = self.get_random_index_ini(probability_map, cdf)
+        index_fin = index_ini.astype(int) + self.patch_size
+        location = np.concatenate([index_ini, index_fin])
         cropped_subject = self.crop(subject, index_ini, self.patch_size)
         cropped_subject['index_ini'] = index_ini.astype(int)
+        cropped_subject[LOCATION] = location
         return cropped_subject
 
     def get_random_index_ini(
