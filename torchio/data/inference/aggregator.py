@@ -177,7 +177,7 @@ class GridAggregator:
             # https://github.com/fepegar/torchio/issues/526
             # Prevent the _avgmask being zero
             self._avgmask_tensor[self._avgmask_tensor == 0] = 1
-            output = torch.true_divide(
+            output = torch.div(
                 self._output_tensor, self._avgmask_tensor)
         else:
             output = self._output_tensor
