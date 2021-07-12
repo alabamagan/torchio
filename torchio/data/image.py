@@ -1,5 +1,6 @@
 import warnings
 from pathlib import Path
+from collections.abc import Iterable
 from typing import Any, Dict, Tuple, Optional, Union, Sequence, List, Callable
 
 import torch
@@ -66,6 +67,10 @@ class Image(dict):
         check_nans: If ``True``, issues a warning if NaNs are found
             in the image. If ``False``, images will not be checked for the
             presence of NaNs.
+        channels_last: If ``True``, the read tensor will be permuted so the
+            last dimension becomes the first. This is useful, e.g., when
+            NIfTI images have been saved with the channels dimension being the
+            fourth instead of the fifth.
         reader: Callable object that takes a path and returns a 4D tensor and a
             2D, :math:`4 \times 4` affine matrix. This can be used if your data
             is saved in a custom format, such as ``.npy`` (see example below).
@@ -377,10 +382,10 @@ class Image(dict):
             ) -> Optional[Union[Path, List[Path]]]:
         if path is None:
             return None
-        if isinstance(path, (str, Path)):
-            return self._parse_single_path(path)
-        else:
+        if isinstance(path, Iterable) and not isinstance(path, str):
             return [self._parse_single_path(p) for p in path]
+        else:
+            return self._parse_single_path(path)
 
     def _parse_tensor(
             self,
@@ -396,7 +401,10 @@ class Image(dict):
             tensor = check_uint_to_int(tensor)
             tensor = torch.as_tensor(tensor)
         elif not isinstance(tensor, torch.Tensor):
-            message = 'Input tensor must be a PyTorch tensor or NumPy array'
+            message = (
+                'Input tensor must be a PyTorch tensor or NumPy array,'
+                f' but type "{type(tensor)}" was found'
+            )
             raise TypeError(message)
         ndim = tensor.ndim
         if ndim != 4:
@@ -587,8 +595,6 @@ class ScalarImage(Image):
 class LabelMap(Image):
     """Image whose pixel values represent categorical labels.
 
-    Intensity transforms are not applied to these images.
-
     Example:
         >>> import torch
         >>> import torchio as tio
@@ -599,6 +605,12 @@ class LabelMap(Image):
         ...     'white_matter.nii.gz',
         ...     'csf.nii.gz',
         ... )
+
+    Intensity transforms are not applied to these images.
+
+    Nearest neighbor interpolation is always used to resample label maps,
+    independently of the specified interpolation type in the transform
+    instantiation.
 
     See :class:`~torchio.Image` for more information.
     """

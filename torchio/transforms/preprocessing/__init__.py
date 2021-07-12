@@ -3,8 +3,10 @@ from .spatial.crop import Crop
 from .spatial.resample import Resample
 from .spatial.crop_or_pad import CropOrPad
 from .spatial.to_canonical import ToCanonical
+from .spatial.copy_affine import CopyAffine
 from .spatial.ensure_shape_multiple import EnsureShapeMultiple
 
+from .intensity.mask import Mask
 from .intensity.rescale import RescaleIntensity
 from .intensity.z_normalization import ZNormalization
 from .intensity.histogram_standardization import HistogramStandardization
@@ -23,9 +25,11 @@ __all__ = [
     'Resample',
     'ToCanonical',
     'CropOrPad',
+    'CopyAffine',
     'EnsureShapeMultiple',
-    'ZNormalization',
+    'Mask',
     'RescaleIntensity',
+    'ZNormalization',
     'HistogramStandardization',
     'OneHot',
     'Contour',

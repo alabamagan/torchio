@@ -66,48 +66,37 @@ Credits
 If you use this library for your research,
 please cite our preprint:
 
-|paper-url|_
-
-.. _paper-url: https://arxiv.org/abs/2003.04696
-
-.. |paper-url| replace:: Pérez-García, F., Sparks, R., Ourselin, S.: TorchIO: a Python library for efficient loading, preprocessing, augmentation and patch-based sampling of medical images in deep learning. arXiv:2003.04696 [cs, eess, stat] (Mar 2020), http://arxiv.org/abs/2003.04696, arXiv: 2003.04696
+`F. Pérez-García, R. Sparks, and S. Ourselin. TorchIO: a Python library for
+efficient loading, preprocessing, augmentation and patch-based sampling of
+medical images in deep learning. Computer Methods and Programs in Biomedicine
+(June 2021), p. 106236. ISSN:
+0169-2607.doi:10.1016/j.cmpb.2021.106236. <https://doi.org/10.1016/j.cmpb.2021.106236>`_
 
 
 BibTeX:
 
 .. code-block:: latex
 
-   @article{perez-garcia_torchio_2020,
-      title = {{TorchIO}: a {Python} library for efficient loading, preprocessing, augmentation and patch-based sampling of medical images in deep learning},
-      shorttitle = {{TorchIO}},
-      url = {http://arxiv.org/abs/2003.04696},
-      urldate = {2020-03-11},
-      journal = {arXiv:2003.04696 [cs, eess, stat]},
-      author = {P{\'e}rez-Garc{\'i}a, Fernando and Sparks, Rachel and Ourselin, Sebastien},
-      month = mar,
-      year = {2020},
-      note = {arXiv: 2003.04696},
-      keywords = {Computer Science - Computer Vision and Pattern Recognition, Electrical Engineering and Systems Science - Image and Video Processing, Computer Science - Machine Learning, Computer Science - Artificial Intelligence, Statistics - Machine Learning},
+   @article{perez-garcia_torchio_2021,
+      title = {TorchIO: a Python library for efficient loading, preprocessing, augmentation and patch-based sampling of medical images in deep learning},
+      journal = {Computer Methods and Programs in Biomedicine},
+      pages = {106236},
+      year = {2021},
+      issn = {0169-2607},
+      doi = {https://doi.org/10.1016/j.cmpb.2021.106236},
+      url = {https://www.sciencedirect.com/science/article/pii/S0169260721003102},
+      author = {P{\'e}rez-Garc{\'i}a, Fernando and Sparks, Rachel and Ourselin, S{\'e}bastien},
+      keywords = {Medical image computing, Deep learning, Data augmentation, Preprocessing},
    }
 
-This project is supported by the
-`Wellcome / EPSRC Centre for Interventional and Surgical Sciences
-(WEISS) <https://www.ucl.ac.uk/interventional-surgical-sciences/>`_
-(University College London) and the
-`School of Biomedical Engineering & Imaging Sciences
-(BMEIS) <https://www.kcl.ac.uk/bmeis>`_
-(King's College London).
+This project is supported by the following institutions:
 
-.. image:: ../images/weiss.jpg
-    :width: 300
-    :alt: Wellcome / EPSRC Centre for Interventional and Surgical Sciences
+* `Engineering and Physical Sciences Research Council (EPSRC) & UK Research and Innovation (UKRI) <https://epsrc.ukri.org/>`_
+* `EPSRC Centre for Doctoral Training in Intelligent, Integrated Imaging In Healthcare (i4health) <https://www.ucl.ac.uk/intelligent-imaging-healthcare/>`_ (University College London)
+* `Wellcome / EPSRC Centre for Interventional and Surgical Sciences (WEISS) <https://www.ucl.ac.uk/interventional-surgical-sciences/>`_ (University College London)
+* `School of Biomedical Engineering & Imaging Sciences (BMEIS) <https://www.kcl.ac.uk/bmeis>`_ (King's College London)
 
-
-.. image:: ../images/cme.svg
-    :width: 250
-    :alt: School of Biomedical Engineering & Imaging Sciences
-
-This package has been greatly inspired by `NiftyNet <https://niftynet.io/>`_
+This library has been greatly inspired by `NiftyNet <https://niftynet.io/>`_
 which is no longer maintained.
 
 
@@ -128,7 +117,7 @@ which is no longer maintained.
    :alt: Documentation status
 
 .. |Build-status| image:: https://img.shields.io/travis/fepegar/torchio/master.svg?label=Travis%20CI%20build&logo=travis
-   :target: https://travis-ci.org/fepegar/torchio
+   :target: https://travis-ci.com/fepegar/torchio
    :alt: Build status
 
 .. |Coverage-codecov| image:: https://codecov.io/gh/fepegar/torchio/branch/master/graphs/badge.svg

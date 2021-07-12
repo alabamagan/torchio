@@ -25,7 +25,7 @@ author = 'Fernando Pérez-García'
 
 # version is the short X.Y version
 # release is the full version, including alpha/beta/rc tags
-version = release = '0.18.39'
+version = release = '0.18.45'
 
 
 # -- General configuration ---------------------------------------------------
@@ -46,6 +46,7 @@ extensions = [
     'sphinx.ext.intersphinx',
     'matplotlib.sphinxext.plot_directive',
     'sphinx_gallery.gen_gallery',
+    'notfound.extension',
 ]
 
 # Add mappings
@@ -86,6 +87,18 @@ exclude_patterns: List[str] = []
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
 
+# sphinx-notfound-page
+# https://github.com/readthedocs/sphinx-notfound-page
+notfound_context = {
+    'title': 'Page not found',
+    'body': (
+        '<h1>Page not found</h1>'
+        "<p>Sorry, we couldn't find that page.</p>"
+        '<p>Try using the search box or go to the'
+        ' <a href="http://torchio.rtfd.io/">homepage</a>.</p>'
+    ),
+}
+
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-nitpicky
 # This generates a lot of warnings because of the broken internal links, which
 # makes the docs build fail because of the "fail_on_warning: true" option in
@@ -106,9 +119,9 @@ html_logo = 'favicon_io/torchio_logo_2048x2048.png'
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-arxiv_url = 'https://pytorchecosystemday.fbreg.com/'
-link = f'<a href="{arxiv_url}">PyTorch Ecosystem Day</a>'
-message = f'TorchIO was featured at the {link}! (21 April 2021)'
+url = 'https://doi.org/10.1016/j.cmpb.2021.106236'
+html_href = f'<a href="{url}">paper</a>'
+message = f'The new peer-reviewed TorchIO {html_href} is out!'
 html_theme_options = {
     'announcement': message,
 }
