@@ -24,6 +24,7 @@ from .augmentation.intensity import RandomMotion, Motion
 from .augmentation.intensity import RandomGhosting, Ghosting
 from .augmentation.intensity import RandomBiasField, BiasField
 from .augmentation.intensity import RandomLabelsToImage, LabelsToImage
+from .augmentation.intensity import RandomRescale, Rescale
 
 # Preprocessing
 from .preprocessing import Pad
@@ -79,6 +80,8 @@ __all__ = [
     'BiasField',
     'RandomLabelsToImage',
     'LabelsToImage',
+    'RandomRescale',
+    'Rescale',
     'Pad',
     'Crop',
     'Resample',

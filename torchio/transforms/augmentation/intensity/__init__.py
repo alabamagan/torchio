@@ -7,6 +7,7 @@ from .random_motion import RandomMotion, Motion
 from .random_ghosting import RandomGhosting, Ghosting
 from .random_bias_field import RandomBiasField, BiasField
 from .random_labels_to_image import RandomLabelsToImage, LabelsToImage
+from .random_rescale import RandomRescale, Rescale
 
 
 __all__ = [
@@ -28,4 +29,6 @@ __all__ = [
     'BiasField',
     'RandomLabelsToImage',
     'LabelsToImage',
+    'RandomRescale',
+    'Rescale'
 ]
