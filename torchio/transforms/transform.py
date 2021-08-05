@@ -256,8 +256,13 @@ class Transform(ABC):
                         f'If {name} is a single number, it must be of'
                         f' type {type_constraint}, not {nums_range}'
                     )
-            min_range = -nums_range if min_constraint is None else nums_range
-            return (min_range, nums_range)
+
+            min_range, max_range = -nums_range, nums_range
+            # Check if min constraint was broken by the range
+            if min_constraint is not None:
+                if min_range < min_constraint:
+                    min_range = min_constraint
+            return (min_range, max_range)
 
         try:
             min_value, max_value = nums_range
