@@ -50,11 +50,11 @@ class RandomRescale(RandomTransform, IntensityTransform):
         arguments = defaultdict(dict)
         for name, image in self.get_images_dict(subject).items():
             mean, std = self.get_params(self.mean_range, self.std_range)
-            arguments['mean'][image_name] = mean
-            arguments['std'][image_name] = std
-            arguments['masking_method'][image_name] = self.masking_method
-            arguments['bg_value'][image_name] = self.bg_value
-            arguments['label'][image_name] = self.label
+            arguments['mean'][name] = mean
+            arguments['std'][name] = std
+            arguments['masking_method'][name] = self.masking_method
+            arguments['bg_value'][name] = self.bg_value
+            arguments['label'][name] = self.label
 
         transform = Rescale(**self.add_include_exclude(arguments))
         transformed = transform(subject)
