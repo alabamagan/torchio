@@ -12,19 +12,18 @@ from .. import RandomTransform
 
 
 class RandomRescale(RandomTransform, IntensityTransform):
-    r"""Randomly change the mean and variance of an image.
+    r"""Randomly change the mean and variance of an image. 
 
     Args:
-        mean_range
-        
-        std_range
-        
-        masking_method
-        
+        mean_range: 
+        std_range:
+        masking_method:
+        bg_value:
+        label:
         **kwargs: See :class:`~torchio.transforms.Transform` for additional
             keyword arguments.
 
-
+    .. warning :: This function has no protection against overflow yet, so be mindful when choosing the range!
 
     Example:
         >>> import torchio as tio
@@ -109,7 +108,7 @@ class Rescale(IntensityTransform):
 
             # Invert transform is same as forward transform, just that he mean and std were different.
             cur_mean, cur_std = compute_mean_std(image.data, masking_method, bg_value, label)
-            image.set_data( (image.data - cur_mean) * std / cur_std + mean)
+            image.set_data(image.data.sub(cur_mean).mul(std).div(cur_std).add(mean))
         return subject
 
 def compute_mean_std(image: torch.FloatTensor,
