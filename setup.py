@@ -25,7 +25,7 @@ requirements = [
 
 setup(
     author='Fernando Perez-Garcia',
-    author_email='fernando.perezgarcia.17@ucl.ac.uk',
+    author_email='fepegar@gmail.com',
     python_requires='>=3.6',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
@@ -35,6 +35,7 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
     ],
     description=(
         'Tools for loading, augmenting and writing 3D medical images'
@@ -62,6 +63,6 @@ setup(
     test_suite='tests',
     tests_require=[],
     url='https://github.com/fepegar/torchio',
-    version='0.18.46',
+    version='0.18.61',
     zip_safe=False,
 )

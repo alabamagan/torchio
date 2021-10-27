@@ -30,8 +30,7 @@ from .. import SubjectsDataset, Subject, ScalarImage, LabelMap
 
 
 class IXI(SubjectsDataset):
-    """
-    Full IXI dataset.
+    """Full IXI dataset.
 
     Args:
         root: Root directory to which the dataset will be downloaded.
@@ -154,7 +153,7 @@ class IXI(SubjectsDataset):
             url = self.base_url.format(modality=modality)
             md5 = self.md5_dict[modality]
 
-            with NamedTemporaryFile(suffix='.tar') as f:
+            with NamedTemporaryFile(suffix='.tar', delete=False) as f:
                 download_and_extract_archive(
                     url,
                     download_root=modality_dir,
@@ -178,7 +177,7 @@ class IXITiny(SubjectsDataset):
             :class:`~torchio.transforms.transform.Transform`.
         download: If set to ``True``, will download the data into :attr:`root`.
 
-    .. _notebook: https://github.com/fepegar/torchio/blob/master/notebooks/README.md
+    .. _notebook: https://github.com/fepegar/torchio/blob/main/tutorials/README.md
     """  # noqa: E501
     url = 'https://www.dropbox.com/s/ogxjwjxdv5mieah/ixi_tiny.zip?dl=1'
     md5 = 'bfb60f4074283d78622760230bfa1f98'
@@ -230,7 +229,7 @@ class IXITiny(SubjectsDataset):
             return
         print('Root directory for IXITiny not found:', root)  # noqa: T001
         print('Downloading...')  # noqa: T001
-        with NamedTemporaryFile(suffix='.zip') as f:
+        with NamedTemporaryFile(suffix='.zip', delete=False) as f:
             download_and_extract_archive(
                 self.url,
                 download_root=root,

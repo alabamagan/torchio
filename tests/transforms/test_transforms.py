@@ -1,7 +1,6 @@
 import copy
 import torch
 import numpy as np
-import nibabel as nib
 import torchio as tio
 import SimpleITK as sitk
 from ..utils import TorchioTestCase
@@ -17,6 +16,7 @@ class TestTransforms(TorchioTestCase):
         disp = 1 if is_3d else (1, 1, 0.01)
         elastic = tio.RandomElasticDeformation(max_displacement=disp)
         cp_args = (9, 21, 30) if is_3d else (21, 30, 1)
+        resize_args = (10, 20, 30) if is_3d else (10, 20, 1)
         flip_axes = axes_downsample = (0, 1, 2) if is_3d else (0, 1)
         swap_patch = (2, 3, 4) if is_3d else (3, 4, 1)
         pad_args = (1, 2, 3, 0, 5, 6) if is_3d else (0, 0, 3, 0, 5, 6)
@@ -24,9 +24,10 @@ class TestTransforms(TorchioTestCase):
         remapping = {1: 2, 2: 1, 3: 20, 4: 25}
         transforms = [
             tio.CropOrPad(cp_args),
+            tio.EnsureShapeMultiple(2, method='crop'),
+            tio.Resize(resize_args),
             tio.ToCanonical(),
             tio.RandomAnisotropy(downsampling=(1.75, 2), axes=axes_downsample),
-            tio.EnsureShapeMultiple(2, method='crop'),
             tio.CopyAffine(channels[0]),
             tio.Resample((1, 1.1, 1.25)),
             tio.RandomFlip(axes=flip_axes, flip_probability=1),
@@ -97,15 +98,6 @@ class TestTransforms(TorchioTestCase):
             channels=('default_image_name',), labels=False)
         transformed = transform(image)
         self.assertIsInstance(transformed, sitk.Image)
-
-    def test_transforms_nib(self):
-        data = torch.rand(1, 4, 5, 8).numpy()
-        affine = np.diag((1, -2, 3, 1))
-        image = nib.Nifti1Image(data, affine)
-        transform = self.get_transform(
-            channels=('default_image_name',), labels=False)
-        transformed = transform(image)
-        self.assertIsInstance(transformed, nib.Nifti1Image)
 
     def test_transforms_subject_3d(self):
         transform = self.get_transform(channels=('t1', 't2'), is_3d=True)

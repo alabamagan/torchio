@@ -215,18 +215,82 @@ class Subject(dict):
     def clear_history(self) -> None:
         self.applied_transforms = []
 
-    def check_consistent_attribute(self, attribute: str) -> None:
-        values_dict = {}
-        iterable = self.get_images_dict(intensity_only=False).items()
-        for image_name, image in iterable:
-            values_dict[image_name] = getattr(image, attribute)
-        num_unique_values = len(set(values_dict.values()))
-        if num_unique_values > 1:
-            message = (
-                f'More than one {attribute} found in subject images:'
-                f'\n{pprint.pformat(values_dict)}'
-            )
-            raise RuntimeError(message)
+    def check_consistent_attribute(
+            self,
+            attribute: str,
+            relative_tolerance: float = 1e-6,
+            absolute_tolerance: float = 1e-6,
+            message: Optional[str] = None,
+            ) -> None:
+        r"""Check for consistency of an attribute across all images.
+
+        Args:
+            attribute: Name of the image attribute to check
+            relative_tolerance: Relative tolerance for :func:`numpy.allclose()`
+            absolute_tolerance: Absolute tolerance for :func:`numpy.allclose()`
+
+        Example:
+            >>> import numpy as np
+            >>> import torch
+            >>> import torchio as tio
+            >>> scalars = torch.randn(1, 512, 512, 100)
+            >>> mask = torch.tensor(scalars > 0).type(torch.int16)
+            >>> af1 = np.eye([0.8, 0.8, 2.50000000000001, 1])
+            >>> af2 = np.eye([0.8, 0.8, 2.49999999999999, 1])  # small difference here (e.g. due to different reader)
+            >>> subject = tio.Subject(
+            ...   image = tio.ScalarImage(tensor=scalars, affine=af1),
+            ...   mask = tio.LabelMap(tensor=mask, affine=af2)
+            ... )
+            >>> subject.check_consistent_attribute('spacing')  # no error as tolerances are > 0
+
+        .. note:: To check that all values for a specific attribute are close
+            between all images in the subject, :func:`numpy.allclose()` is used.
+            This function returns ``True`` if
+            :math:`|a_i - b_i| \leq t_{abs} + t_{rel} * |b_i|`, where
+            :math:`a_i` and :math:`b_i` are the :math:`i`-th element of the same
+            attribute of two images being compared,
+            :math:`t_{abs}` is the ``absolute_tolerance`` and
+            :math:`t_{rel}` is the ``relative_tolerance``.
+        """
+        message = (
+            f'More than one value for "{attribute}" found in subject images:'
+            '\n{}'
+        )
+
+        names_images = self.get_images_dict(intensity_only=False).items()
+        try:
+            first_attribute = None
+            first_image = None
+
+            for image_name, image in names_images:
+                if first_attribute is None:
+                    first_attribute = getattr(image, attribute)
+                    first_image = image_name
+                    continue
+                current_attribute = getattr(image, attribute)
+                all_close = np.allclose(
+                    current_attribute,
+                    first_attribute,
+                    rtol=relative_tolerance,
+                    atol=absolute_tolerance,
+                )
+                if not all_close:
+                    message = message.format(
+                        pprint.pformat({
+                            first_image: first_attribute,
+                            image_name: current_attribute
+                        }),
+                    )
+                    raise RuntimeError(message)
+        except TypeError:
+            # fallback for non-numeric values
+            values_dict = {}
+            for image_name, image in names_images:
+                values_dict[image_name] = getattr(image, attribute)
+            num_unique_values = len(set(values_dict.values()))
+            if num_unique_values > 1:
+                message = message.format(pprint.pformat(values_dict))
+                raise RuntimeError(message) from None
 
     def check_consistent_spatial_shape(self) -> None:
         self.check_consistent_attribute('spatial_shape')
@@ -234,29 +298,23 @@ class Subject(dict):
     def check_consistent_orientation(self) -> None:
         self.check_consistent_attribute('orientation')
 
-    def check_consistent_affine(self):
-        # https://github.com/fepegar/torchio/issues/354
-        affine = None
-        first_image = None
-        iterable = self.get_images_dict(intensity_only=False).items()
-        for image_name, image in iterable:
-            if affine is None:
-                affine = image.affine
-                first_image = image_name
-            elif not np.allclose(affine, image.affine, rtol=1e-6, atol=1e-6):
-                message = (
-                    f'Images "{first_image}" and "{image_name}" do not occupy'
-                    ' the same physical space.'
-                    f'\nAffine of "{first_image}":'
-                    f'\n{pprint.pformat(affine)}'
-                    f'\nAffine of "{image_name}":'
-                    f'\n{pprint.pformat(image.affine)}'
-                )
-                raise RuntimeError(message)
+    def check_consistent_affine(self) -> None:
+        self.check_consistent_attribute('affine')
 
-    def check_consistent_space(self):
-        self.check_consistent_spatial_shape()
-        self.check_consistent_affine()
+    def check_consistent_space(self) -> None:
+        try:
+            self.check_consistent_attribute('spacing')
+            self.check_consistent_attribute('direction')
+            self.check_consistent_attribute('origin')
+            self.check_consistent_spatial_shape()
+        except RuntimeError as e:
+            message = (
+                'As described above, some images in the subject are not in the'
+                ' same space. You probably can use the transforms ToCanonical'
+                ' and Resample to fix this, as explained at'
+                ' https://github.com/fepegar/torchio/issues/647#issuecomment-913025695'
+            )
+            raise RuntimeError(message) from e
 
     def get_images_names(self) -> List[str]:
         return list(self.get_images_dict(intensity_only=False).keys())

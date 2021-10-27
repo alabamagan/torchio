@@ -2,9 +2,11 @@
 
 """Tests for Image."""
 
+import sys
 import copy
 import tempfile
 
+import pytest
 import torch
 import numpy as np
 import nibabel as nib
@@ -20,6 +22,7 @@ class TestImage(TorchioTestCase):
         with self.assertRaises(FileNotFoundError):
             tio.ScalarImage('nopath')
 
+    @pytest.mark.skipif(sys.platform == 'win32', reason='Path not valid')
     def test_wrong_path_value(self):
         with self.assertRaises(RuntimeError):
             tio.ScalarImage('~&./@#"!?X7=+')
@@ -62,9 +65,9 @@ class TestImage(TorchioTestCase):
         subject = tio.Subject(
             t1=tio.ScalarImage(self.get_image_path('repr_test')),
         )
-        assert 'shape' not in repr(subject['t1'])
+        assert 'memory' not in repr(subject['t1'])
         subject.load()
-        assert 'shape' in repr(subject['t1'])
+        assert 'memory' in repr(subject['t1'])
 
     def test_data_tensor(self):
         subject = copy.deepcopy(self.sample_subject)
@@ -157,7 +160,7 @@ class TestImage(TorchioTestCase):
         for dtype in np.uint16, np.uint32:
             data = np.ones((3, 3, 3), dtype=dtype)
             img = nib.Nifti1Image(data, affine)
-            with tempfile.NamedTemporaryFile(suffix='.nii') as f:
+            with tempfile.NamedTemporaryFile(suffix='.nii', delete=False) as f:
                 nib.save(img, f.name)
                 tio.ScalarImage(f.name).load()
 
@@ -201,3 +204,12 @@ class TestImage(TorchioTestCase):
         assert_shape((5, 5, 5), (1, 5, 5, 5))
         assert_shape((1, 5, 5, 5), (1, 5, 5, 5))
         assert_shape((4, 5, 5, 5), (4, 5, 5, 5))
+
+    def test_fast_gif(self):
+        with self.assertWarns(UserWarning):
+            with tempfile.NamedTemporaryFile(suffix='.gif', delete=False) as f:
+                self.sample_subject.t1.to_gif(0, 0.0001, f.name)
+
+    def test_gif_rgb(self):
+        with tempfile.NamedTemporaryFile(suffix='.gif', delete=False) as f:
+            tio.ScalarImage(tensor=torch.rand(3, 4, 5, 6)).to_gif(0, 1, f.name)

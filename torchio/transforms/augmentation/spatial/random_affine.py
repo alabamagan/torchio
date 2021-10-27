@@ -18,7 +18,7 @@ TypeOneToSixFloat = Union[TypeRangeFloat, TypeTripletFloat, TypeSextetFloat]
 
 
 class RandomAffine(RandomTransform, SpatialTransform):
-    r"""Random affine transformation.
+    r"""Apply a random affine transformation and resample the image.
 
     Args:
         scales: Tuple :math:`(a_1, b_1, a_2, b_2, a_3, b_3)` defining the
@@ -55,6 +55,12 @@ class RandomAffine(RandomTransform, SpatialTransform):
             then :math:`t_i \sim \mathcal{U}(-x, x)`.
             If three values :math:`(x_1, x_2, x_3)` are provided,
             then :math:`t_i \sim \mathcal{U}(-x_i, x_i)`.
+            For example, if the image is in RAS+ orientation (e.g., after
+            applying :class:`~torchio.transforms.preprocessing.ToCanonical`)
+            and the translation is :math:`(10, 20, 30)`, the sample will move
+            10 mm to the right, 20 mm to the front, and 30 mm upwards.
+            If the image was in, e.g., PIR+ orientation, the sample will move
+            10 mm to the back, 20 mm downwards, and 30 mm to the right.
         isotropic: If ``True``, the scaling factor along all dimensions is the
             same, i.e. :math:`s_1 = s_2 = s_3`.
         center: If ``'image'``, rotations and scaling will be performed around
@@ -74,18 +80,27 @@ class RandomAffine(RandomTransform, SpatialTransform):
 
     Example:
         >>> import torchio as tio
-        >>> subject = tio.datasets.Colin27()
+        >>> image = tio.datasets.Colin27().t1
         >>> transform = tio.RandomAffine(
         ...     scales=(0.9, 1.2),
-        ...     degrees=10,
-        ...     isotropic=True,
-        ...     image_interpolation='nearest',
+        ...     degrees=15,
         ... )
-        >>> transformed = transform(subject)
+        >>> transformed = transform(image)
+
+    .. plot::
+
+        import torchio as tio
+        image = tio.datasets.Colin27().t1
+        transform = tio.RandomAffine(
+            scales=(0.9, 1.2),
+            degrees=15,
+        )
+        transformed = transform(image)
+        transformed.plot()
 
     From the command line::
 
-        $ torchio-transform t1.nii.gz RandomAffine --kwargs "scales=(0.9, 1.2) degrees=10 isotropic=True image_interpolation=nearest" --seed 42 affine_min.nii.gz
+        $ tiotr t1.nii.gz RandomAffine --kwargs "scales=(0.9, 1.2) degrees=15" t1_affine.nii.gz
 
     """
     def __init__(
@@ -226,90 +241,62 @@ class Affine(SpatialTransform):
         )
 
     @staticmethod
-    def get_scaling_transform(
+    def _get_scaling_transform(
             scaling_params: Sequence[float],
             center_lps: Optional[TypeTripletFloat] = None,
             ) -> sitk.ScaleTransform:
-        # scaling_params are inverted so that they are more intuitive
-        # For example, 1.5 means the objects look 1.5 times larger
+        # 1.5 means the objects look 1.5 times larger
         transform = sitk.ScaleTransform(3)
-        scaling_params = 1 / np.array(scaling_params)
+        scaling_params = np.array(scaling_params).astype(float)
         transform.SetScale(scaling_params)
         if center_lps is not None:
             transform.SetCenter(center_lps)
         return transform
 
     @staticmethod
-    def get_rotation_transform(
+    def _get_rotation_transform(
             degrees: Sequence[float],
             translation: Sequence[float],
             center_lps: Optional[TypeTripletFloat] = None,
             ) -> sitk.Euler3DTransform:
+
+        def ras_to_lps(triplet: np.ndarray):
+            return np.array((-1, -1, 1), dtype=float) * np.asarray(triplet)
+
         transform = sitk.Euler3DTransform()
         radians = np.radians(degrees)
-        transform.SetRotation(*radians)
-        transform.SetTranslation(translation)
+
+        # SimpleITK uses LPS
+        radians_lps = ras_to_lps(radians)
+        translation_lps = ras_to_lps(translation)
+
+        transform.SetRotation(*radians_lps)
+        transform.SetTranslation(translation_lps)
         if center_lps is not None:
             transform.SetCenter(center_lps)
         return transform
 
-    def apply_transform(self, subject: Subject) -> Subject:
-        scaling_params = np.array(self.scales).copy()
-        rotation_params = np.array(self.degrees).copy()
-        translation_params = np.array(self.translation).copy()
-        subject.check_consistent_spatial_shape()
-        for image in self.get_images(subject):
-            if image[TYPE] != INTENSITY:
-                interpolation = 'nearest'
-            else:
-                interpolation = self.image_interpolation
+    def get_affine_transform(self, image):
+        scaling = np.asarray(self.scales).copy()
+        rotation = np.asarray(self.degrees).copy()
+        translation = np.asarray(self.translation).copy()
 
-            if image.is_2d():
-                scaling_params[2] = 1
-                rotation_params[:-1] = 0
+        if image.is_2d():
+            scaling[2] = 1
+            rotation[:-1] = 0
 
-            if self.use_image_center:
-                center = image.get_center(lps=True)
-            else:
-                center = None
+        if self.use_image_center:
+            center_lps = image.get_center(lps=True)
+        else:
+            center_lps = None
 
-            transformed_tensors = []
-            for tensor in image.data:
-                transformed_tensor = self.apply_affine_transform(
-                    tensor,
-                    image.affine,
-                    scaling_params.tolist(),
-                    rotation_params.tolist(),
-                    translation_params.tolist(),
-                    interpolation,
-                    center_lps=center,
-                )
-                transformed_tensors.append(transformed_tensor)
-            image.set_data(torch.stack(transformed_tensors))
-        return subject
-
-    def apply_affine_transform(
-            self,
-            tensor: torch.Tensor,
-            affine: np.ndarray,
-            scaling_params: Sequence[float],
-            rotation_params: Sequence[float],
-            translation_params: Sequence[float],
-            interpolation: str,
-            center_lps: Optional[TypeTripletFloat] = None,
-            ) -> torch.Tensor:
-        assert tensor.ndim == 3
-
-        image = nib_to_sitk(tensor[np.newaxis], affine, force_3d=True)
-        floating = reference = image
-
-        scaling_transform = self.get_scaling_transform(
-            scaling_params,
+        scaling_transform = self._get_scaling_transform(
+            scaling,
             center_lps=center_lps,
         )
-        rotation_transform = self.get_rotation_transform(
-            rotation_params,
-            translation_params,
+        rotation_transform = self._get_rotation_transform(
+            rotation,
+            translation,
             center_lps=center_lps,
         )
 
@@ -322,17 +309,62 @@ class Affine(SpatialTransform):
             transforms = [scaling_transform, rotation_transform]
             transform = sitk.CompositeTransform(transforms)
 
+        # ResampleImageFilter expects the transform from the output space to
+        # the input space. Intuitively, the passed arguments should take us
+        # from the input space to the output space, so we need to invert the
+        # transform.
+        # More info at https://github.com/fepegar/torchio/discussions/693
+        transform = transform.GetInverse()
+
         if self.invert_transform:
             transform = transform.GetInverse()
 
-        if self.default_pad_value == 'minimum':
-            default_value = tensor.min().item()
-        elif self.default_pad_value == 'mean':
-            default_value = get_borders_mean(image, filter_otsu=False)
-        elif self.default_pad_value == 'otsu':
-            default_value = get_borders_mean(image, filter_otsu=True)
-        else:
-            default_value = self.default_pad_value
+        return transform
+
+    def apply_transform(self, subject: Subject) -> Subject:
+        subject.check_consistent_spatial_shape()
+        for image in self.get_images(subject):
+            transform = self.get_affine_transform(image)
+            transformed_tensors = []
+            for tensor in image.data:
+                sitk_image = nib_to_sitk(
+                    tensor[np.newaxis],
+                    image.affine,
+                    force_3d=True,
+                )
+                if image[TYPE] != INTENSITY:
+                    interpolation = 'nearest'
+                    default_value = 0
+                else:
+                    interpolation = self.image_interpolation
+                    if self.default_pad_value == 'minimum':
+                        default_value = tensor.min().item()
+                    elif self.default_pad_value == 'mean':
+                        default_value = get_borders_mean(
+                            sitk_image, filter_otsu=False)
+                    elif self.default_pad_value == 'otsu':
+                        default_value = get_borders_mean(
+                            sitk_image, filter_otsu=True)
+                    else:
+                        default_value = self.default_pad_value
+                transformed_tensor = self.apply_affine_transform(
+                    sitk_image,
+                    transform,
+                    interpolation,
+                    default_value,
+                )
+                transformed_tensors.append(transformed_tensor)
+            image.set_data(torch.stack(transformed_tensors))
+        return subject
+
+    def apply_affine_transform(
+            self,
+            sitk_image: sitk.Image,
+            transform: sitk.Transform,
+            interpolation: str,
+            default_value: float,
+            ) -> torch.Tensor:
+        floating = reference = sitk_image
 
         resampler = sitk.ResampleImageFilter()
         resampler.SetInterpolator(self.get_sitk_interpolator(interpolation))

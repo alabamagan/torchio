@@ -73,8 +73,15 @@ class SubjectsDataset(Dataset):
         return len(self._subjects)
 
     def __getitem__(self, index: int) -> Subject:
-        if not isinstance(index, int):
-            raise ValueError(f'Index "{index}" must be int, not {type(index)}')
+        try:
+            index = int(index)
+        except (RuntimeError, TypeError):
+            message = (
+                f'Index "{index}" must be int or compatible dtype,'
+                f' but an object of type "{type(index)}" was passed'
+            )
+            raise ValueError(message)
+
         subject = self._subjects[index]
         subject = copy.deepcopy(subject)  # cheap since images not loaded yet
         if self.load_getitem:

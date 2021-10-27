@@ -11,7 +11,13 @@ import SimpleITK as sitk
 from deprecated import deprecated
 
 from ..utils import get_stem
-from ..typing import TypeData, TypePath, TypeTripletInt, TypeTripletFloat
+from ..typing import (
+    TypeData,
+    TypePath,
+    TypeTripletInt,
+    TypeTripletFloat,
+    TypeDirection3D,
+)
 from ..constants import DATA, TYPE, AFFINE, PATH, STEM, INTENSITY, LABEL
 from .io import (
     ensure_4d,
@@ -21,6 +27,9 @@ from .io import (
     sitk_to_nib,
     check_uint_to_int,
     get_rotation_and_spacing_from_affine,
+    get_sitk_metadata_from_ras_affine,
+    read_shape,
+    read_affine,
 )
 
 
@@ -68,10 +77,6 @@ class Image(dict):
         check_nans: If ``True``, issues a warning if NaNs are found
             in the image. If ``False``, images will not be checked for the
             presence of NaNs.
-        channels_last: If ``True``, the read tensor will be permuted so the
-            last dimension becomes the first. This is useful, e.g., when
-            NIfTI images have been saved with the channels dimension being the
-            fourth instead of the fifth.
         reader: Callable object that takes a path and returns a 4D tensor and a
             2D, :math:`4 \times 4` affine matrix. This can be used if your data
             is saved in a custom format, such as ``.npy`` (see example below).
@@ -112,12 +117,10 @@ class Image(dict):
             tensor: Optional[TypeData] = None,
             affine: Optional[TypeData] = None,
             check_nans: bool = False,  # removed by ITK by default
-            channels_last: bool = False,
             reader: Callable = read_image,
             **kwargs: Dict[str, Any],
             ):
         self.check_nans = check_nans
-        self.channels_last = channels_last
         self.reader = reader
 
         if type is None:
@@ -142,6 +145,13 @@ class Image(dict):
             if key in kwargs:
                 message = f'Key "{key}" is reserved. Use a different one'
                 raise ValueError(message)
+        if 'channels_last' in kwargs:
+            message = (
+                'The "channels_last" keyword argument is deprecated after'
+                ' https://github.com/fepegar/torchio/pull/685 and will be'
+                ' removed in the future'
+            )
+            warnings.warn(message, DeprecationWarning)
 
         super().__init__(**kwargs)
         self.path = self._parse_path(path)
@@ -152,17 +162,17 @@ class Image(dict):
 
     def __repr__(self):
         properties = []
-        if self._loaded:
-            properties.extend([
-                f'shape: {self.shape}',
-                f'spacing: {self.get_spacing_string()}',
-                f'orientation: {"".join(self.orientation)}+',
-                f'memory: {humanize.naturalsize(self.memory, binary=True)}',
-            ])
-        else:
-            properties.append(f'path: "{self.path}"')
+        properties.extend([
+            f'shape: {self.shape}',
+            f'spacing: {self.get_spacing_string()}',
+            f'orientation: {"".join(self.orientation)}+',
+        ])
         if self._loaded:
             properties.append(f'dtype: {self.data.type()}')
+            properties.append(f'memory: {humanize.naturalsize(self.memory, binary=True)}')
+        else:
+            properties.append(f'path: "{self.path}"')
+
         properties = '; '.join(properties)
         string = f'{self.__class__.__name__}({properties})'
         return string
@@ -193,7 +203,7 @@ class Image(dict):
         """Tensor data. Same as :class:`Image.tensor`."""
         return self[DATA]
 
-    @data.setter
+    @data.setter  # type: ignore
     @deprecated(version='0.18.16', reason=deprecation_message)
     def data(self, tensor: TypeData):
         self.set_data(tensor)
@@ -214,7 +224,13 @@ class Image(dict):
     @property
     def affine(self) -> np.ndarray:
         """Affine matrix to transform voxel indices into world coordinates."""
-        return self[AFFINE]
+        # If path is a dir (probably DICOM), just load the data
+        # Same if it's a list of paths (used to create a 4D image)
+        if self._loaded or (isinstance(self.path, Path) and self.path.is_dir()):
+            affine = self[AFFINE]
+        else:
+            affine = read_affine(self.path)
+        return affine
 
     @affine.setter
     def affine(self, matrix):
@@ -227,7 +243,13 @@ class Image(dict):
     @property
     def shape(self) -> Tuple[int, int, int, int]:
         """Tensor shape as :math:`(C, W, H, D)`."""
-        return tuple(self.data.shape)
+        custom_reader = self.reader is not read_image
+        multipath = not isinstance(self.path, (str, Path))
+        if self._loaded or custom_reader or multipath or self.path.is_dir():
+            shape = tuple(self.data.shape)
+        else:
+            shape = read_shape(self.path)
+        return shape
 
     @property
     def spatial_shape(self) -> TypeTripletInt:
@@ -257,10 +279,21 @@ class Image(dict):
         return nib.aff2axcodes(self.affine)
 
     @property
+    def direction(self) -> TypeDirection3D:
+        _, _, direction = get_sitk_metadata_from_ras_affine(
+            self.affine, lps=False)
+        return direction
+
+    @property
     def spacing(self) -> Tuple[float, float, float]:
         """Voxel spacing in mm."""
         _, spacing = get_rotation_and_spacing_from_affine(self.affine)
         return tuple(spacing)
+
+    @property
+    def origin(self) -> Tuple[float, float, float]:
+        """Center of first voxel in array, in mm."""
+        return tuple(self.affine[:3, 3])
 
     @property
     def itemsize(self):
@@ -332,7 +365,7 @@ class Image(dict):
         elif axis == 'P': flipped_axis = 'A'
         elif axis == 'I': flipped_axis = 'S'
         elif axis == 'S': flipped_axis = 'I'
-        elif axis == 'T': flipped_axis = 'B'
+        elif axis == 'T': flipped_axis = 'B'  # top / bottom
         elif axis == 'B': flipped_axis = 'T'
         else:
             values = ', '.join('LRPAISTB')
@@ -379,7 +412,7 @@ class Image(dict):
 
     def _parse_path(
             self,
-            path: Union[TypePath, Sequence[TypePath]]
+            path: Union[TypePath, Sequence[TypePath], None]
             ) -> Optional[Union[Path, List[Path]]]:
         if path is None:
             return None
@@ -390,9 +423,9 @@ class Image(dict):
 
     def _parse_tensor(
             self,
-            tensor: TypeData,
+            tensor: Optional[TypeData],
             none_ok: bool = True,
-            ) -> torch.Tensor:
+            ) -> Optional[torch.Tensor]:
         if tensor is None:
             if none_ok:
                 return None
@@ -416,11 +449,12 @@ class Image(dict):
             warnings.warn(f'NaNs found in tensor', RuntimeWarning)
         return tensor
 
-    def parse_tensor_shape(self, tensor: torch.Tensor) -> torch.Tensor:
+    @staticmethod
+    def _parse_tensor_shape(tensor: torch.Tensor) -> TypeData:
         return ensure_4d(tensor)
 
     @staticmethod
-    def _parse_affine(affine: TypeData) -> np.ndarray:
+    def _parse_affine(affine: Optional[TypeData]) -> np.ndarray:
         if affine is None:
             return np.eye(4)
         if isinstance(affine, torch.Tensor):
@@ -472,22 +506,21 @@ class Image(dict):
         # Cast to uint8 for LabelMap to save RAM
         if self.type == LABEL:
             tensor = tensor.type(torch.uint8)
-        tensor = self.parse_tensor_shape(tensor)
+        tensor = self._parse_tensor_shape(tensor)
         tensor = self._parse_tensor(tensor)
         affine = self._parse_affine(affine)
-        if self.channels_last:
-            tensor = tensor.permute(3, 0, 1, 2)
         if self.check_nans and torch.isnan(tensor).any():
             warnings.warn(f'NaNs found in file "{path}"', RuntimeWarning)
         return tensor, affine
 
-    def save(self, path: TypePath, squeeze: bool = True) -> None:
+    def save(self, path: TypePath, squeeze: Optional[bool] = None) -> None:
         """Save image to disk.
 
         Args:
             path: String or instance of :class:`pathlib.Path`.
-            squeeze: If ``True``, singleton dimensions will be removed
-                before saving.
+            squeeze: Whether to remove singleton dimensions before saving.
+                If ``None``, the array will be squeezed if the output format is
+                JP(E)G, PNG, BMP or TIF(F).
         """
         write_image(
             self.data,
@@ -512,14 +545,14 @@ class Image(dict):
         """Instantiate a new TorchIO image from a :class:`sitk.Image`.
 
         Example:
-        >>> import torchio as tio
-        >>> import SimpleITK as sitk
-        >>> sitk_image = sitk.Image(20, 30, 40, sitk.sitkUInt16)
-        >>> tio.LabelMap.from_sitk(sitk_image)
-        LabelMap(shape: (1, 20, 30, 40); spacing: (1.00, 1.00, 1.00); orientation: LPS+; memory: 93.8 KiB; dtype: torch.IntTensor)
-        >>> sitk_image = sitk.Image((224, 224), sitk.sitkVectorFloat32, 3)
-        >>> tio.ScalarImage.from_sitk(sitk_image)
-        ScalarImage(shape: (3, 224, 224, 1); spacing: (1.00, 1.00, 1.00); orientation: LPS+; memory: 588.0 KiB; dtype: torch.FloatTensor)
+            >>> import torchio as tio
+            >>> import SimpleITK as sitk
+            >>> sitk_image = sitk.Image(20, 30, 40, sitk.sitkUInt16)
+            >>> tio.LabelMap.from_sitk(sitk_image)
+            LabelMap(shape: (1, 20, 30, 40); spacing: (1.00, 1.00, 1.00); orientation: LPS+; memory: 93.8 KiB; dtype: torch.IntTensor)
+            >>> sitk_image = sitk.Image((224, 224), sitk.sitkVectorFloat32, 3)
+            >>> tio.ScalarImage.from_sitk(sitk_image)
+            ScalarImage(shape: (3, 224, 224, 1); spacing: (1.00, 1.00, 1.00); orientation: LPS+; memory: 588.0 KiB; dtype: torch.FloatTensor)
         """
         tensor, affine = sitk_to_nib(sitk_image)
         return cls(tensor=tensor, affine=affine)
@@ -552,6 +585,43 @@ class Image(dict):
             tensor = tensor.permute(3, 1, 2, 0)
         array = tensor.clamp(0, 255).numpy()[0]
         return ImagePIL.fromarray(array.astype(np.uint8))
+
+    def to_gif(
+            self,
+            axis: int,
+            duration: float,  # of full gif
+            output_path: TypePath,
+            loop: int = 0,
+            rescale: bool = True,
+            optimize: bool = True,
+            reverse: bool = False,
+        ) -> None:
+        """Save an animated GIF of the image.
+
+        Args:
+            axis: Spatial axis (0, 1 or 2).
+            duration: Duration of the full animation in seconds.
+            output_path: Path to the output GIF file.
+            loop: Number of times the GIF should loop.
+                ``0`` means that it will loop forever.
+            rescale: Use :class:`~torchio.transforms.preprocessing.intensity.rescale.RescaleIntensity`
+                to rescale the intensity values to :math:`[0, 255]`.
+            optimize: If ``True``, attempt to compress the palette by
+                eliminating unused colors. This is only useful if the palette
+                can be compressed to the next smaller power of 2 elements.
+            reverse: Reverse the temporal order of frames.
+        """  # noqa: E501
+        from ..visualization import make_gif  # avoid circular import
+        make_gif(
+            self.data,
+            axis,
+            duration,
+            output_path,
+            loop=loop,
+            rescale=rescale,
+            optimize=optimize,
+            reverse=reverse,
+        )
 
     def get_center(self, lps: bool = False) -> TypeTripletFloat:
         """Get image center in RAS+ or LPS+ coordinates.

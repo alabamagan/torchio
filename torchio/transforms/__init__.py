@@ -29,12 +29,14 @@ from .augmentation.intensity import RandomRescale, Rescale
 # Preprocessing
 from .preprocessing import Pad
 from .preprocessing import Crop
+from .preprocessing import Resize
 from .preprocessing import Resample
 from .preprocessing import CropOrPad
 from .preprocessing import CopyAffine
 from .preprocessing import ToCanonical
 from .preprocessing import ZNormalization
 from .preprocessing import RescaleIntensity
+from .preprocessing import Clamp
 from .preprocessing import Mask
 from .preprocessing import EnsureShapeMultiple
 from .preprocessing import HistogramStandardization
@@ -84,11 +86,13 @@ __all__ = [
     'Rescale',
     'Pad',
     'Crop',
+    'Resize',
     'Resample',
     'ToCanonical',
     'ZNormalization',
     'HistogramStandardization',
     'RescaleIntensity',
+    'Clamp',
     'Mask',
     'CropOrPad',
     'CopyAffine',

@@ -23,7 +23,8 @@
       "contributions": [
         "ideas",
         "review",
-        "code"
+        "code",
+        "question"
       ]
     },
     {
@@ -162,7 +163,8 @@
       "profile": "https://github.com/dmus",
       "contributions": [
         "doc",
-        "code"
+        "code",
+        "bug"
       ]
     },
     {
@@ -180,7 +182,8 @@
       "avatar_url": "https://avatars3.githubusercontent.com/u/5416313?v=4",
       "profile": "https://github.com/efirdc",
       "contributions": [
-        "code"
+        "code",
+        "bug"
       ]
     },
     {
@@ -217,7 +220,8 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/56116848?v=4",
       "profile": "http://nina.brown.15@ucl.ac.uk",
       "contributions": [
-        "doc"
+        "doc",
+        "infra"
       ]
     },
     {
@@ -327,6 +331,97 @@
       "profile": "https://mattwarkentin.github.io/",
       "contributions": [
         "code"
+      ]
+    },
+    {
+      "login": "glupol",
+      "name": "glupol",
+      "avatar_url": "https://avatars.githubusercontent.com/u/57905234?v=4",
+      "profile": "https://github.com/glupol",
+      "contributions": [
+        "bug"
+      ]
+    },
+    {
+      "login": "ramonemiliani93",
+      "name": "ramonemiliani93",
+      "avatar_url": "https://avatars.githubusercontent.com/u/14314888?v=4",
+      "profile": "https://github.com/ramonemiliani93",
+      "contributions": [
+        "doc"
+      ]
+    },
+    {
+      "login": "justusschock",
+      "name": "Justus Schock",
+      "avatar_url": "https://avatars.githubusercontent.com/u/12886177?v=4",
+      "profile": "https://github.com/justusschock",
+      "contributions": [
+        "code",
+        "bug"
+      ]
+    },
+    {
+      "login": "cepa995",
+      "name": "Stefan Milorad Radonjić",
+      "avatar_url": "https://avatars.githubusercontent.com/u/67524891?v=4",
+      "profile": "https://github.com/cepa995",
+      "contributions": [
+        "bug"
+      ]
+    },
+    {
+      "login": "srg9000",
+      "name": "Sajan Gohil",
+      "avatar_url": "https://avatars.githubusercontent.com/u/26834833?v=4",
+      "profile": "https://github.com/srg9000",
+      "contributions": [
+        "bug"
+      ]
+    },
+    {
+      "login": "eltociear",
+      "name": "Ikko Ashimine",
+      "avatar_url": "https://avatars.githubusercontent.com/u/22633385?v=4",
+      "profile": "https://bandism.net/",
+      "contributions": [
+        "doc"
+      ]
+    },
+    {
+      "login": "laynr",
+      "name": "laynr",
+      "avatar_url": "https://avatars.githubusercontent.com/u/775607?v=4",
+      "profile": "https://github.com/laynr",
+      "contributions": [
+        "doc"
+      ]
+    },
+    {
+      "login": "omarespejel",
+      "name": "Omar U. Espejel",
+      "avatar_url": "https://avatars.githubusercontent.com/u/4755430?v=4",
+      "profile": "https://github.com/omarespejel",
+      "contributions": [
+        "audio"
+      ]
+    },
+    {
+      "login": "jamesobutler",
+      "name": "James Butler",
+      "avatar_url": "https://avatars.githubusercontent.com/u/15837524?v=4",
+      "profile": "https://github.com/jamesobutler",
+      "contributions": [
+        "bug"
+      ]
+    },
+    {
+      "login": "res191",
+      "name": "res191",
+      "avatar_url": "https://avatars.githubusercontent.com/u/6549034?v=4",
+      "profile": "https://github.com/res191",
+      "contributions": [
+        "fundingFinding"
       ]
     }
   ],

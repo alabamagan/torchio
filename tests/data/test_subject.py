@@ -10,21 +10,21 @@ class TestSubject(TorchioTestCase):
     """Tests for `Subject`."""
     def test_positional_args(self):
         with self.assertRaises(ValueError):
-            with tempfile.NamedTemporaryFile() as f:
-                tio.Subject(tio.ScalarImage(f.name))
+            tio.Subject(0)
 
     def test_input_dict(self):
-        with tempfile.NamedTemporaryFile() as f:
+        with tempfile.NamedTemporaryFile(delete=False) as f:
             input_dict = {'image': tio.ScalarImage(f.name)}
             tio.Subject(input_dict)
             tio.Subject(**input_dict)
 
     def test_no_sample(self):
-        with tempfile.NamedTemporaryFile() as f:
+        with tempfile.NamedTemporaryFile(delete=False) as f:
             input_dict = {'image': tio.ScalarImage(f.name)}
             subject = tio.Subject(input_dict)
             with self.assertRaises(RuntimeError):
-                tio.RandomFlip()(subject)
+                with self.assertWarns(UserWarning):
+                    tio.RandomFlip()(subject)
 
     def test_history(self):
         transformed = tio.RandomGamma()(self.sample_subject)
@@ -94,3 +94,15 @@ class TestSubject(TorchioTestCase):
     def test_2d(self):
         subject = self.make_2d(self.sample_subject)
         assert subject.is_2d()
+
+    def test_different_non_numeric(self):
+        with self.assertRaises(RuntimeError):
+            self.sample_subject.check_consistent_attribute('path')
+
+    def test_bad_arg(self):
+        with self.assertRaises(ValueError):
+            tio.Subject(0)
+
+    def test_no_images(self):
+        with self.assertRaises(ValueError):
+            tio.Subject(a=0)

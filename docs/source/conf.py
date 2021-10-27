@@ -25,7 +25,7 @@ author = 'Fernando Pérez-García'
 
 # version is the short X.Y version
 # release is the full version, including alpha/beta/rc tags
-version = release = '0.18.46'
+version = release = '0.18.61'
 
 
 # -- General configuration ---------------------------------------------------
@@ -234,7 +234,7 @@ sphinx_gallery_conf = {
         # Required keys
         'org': 'fepegar',
         'repo': 'torchio',
-        'branch': 'master',
+        'branch': 'main',
         'binderhub_url': 'https://mybinder.org',
         'dependencies': '../requirements.txt',
         # Optional keys

@@ -2,8 +2,8 @@
 TorchIO
 #######
 
-|PyPI-downloads| |PyPI-version| |Google-Colab-notebook| |Docs-status|
-|Build-status| |Coverage-codecov| |Code-Quality|
+|PyPI-downloads| |PyPI-version| |Conda-version| |Google-Colab-notebook| |Docs-status|
+|Tests-status| |Lint-status| |Coverage-codecov| |Code-Quality|
 |Code-Maintainability| |pre-commit| |Slack|
 
 
@@ -37,7 +37,7 @@ See :doc:`Getting started <quickstart>` for installation instructions and a
 usage overview.
 
 Contributions are more than welcome.
-Please check our `contributing guide <https://github.com/fepegar/torchio/blob/master/CONTRIBUTING.rst>`_
+Please check our `contributing guide <https://github.com/fepegar/torchio/blob/main/CONTRIBUTING.rst>`_
 if you would like to contribute.
 
 If you have questions, feel free to ask in the discussions tab:
@@ -64,7 +64,7 @@ Credits
   From https://stackoverflow.com/a/10766650/3956024
 
 If you use this library for your research,
-please cite our preprint:
+please cite our paper:
 
 `F. Pérez-García, R. Sparks, and S. Ourselin. TorchIO: a Python library for
 efficient loading, preprocessing, augmentation and patch-based sampling of
@@ -86,7 +86,6 @@ BibTeX:
       doi = {https://doi.org/10.1016/j.cmpb.2021.106236},
       url = {https://www.sciencedirect.com/science/article/pii/S0169260721003102},
       author = {P{\'e}rez-Garc{\'i}a, Fernando and Sparks, Rachel and Ourselin, S{\'e}bastien},
-      keywords = {Medical image computing, Deep learning, Data augmentation, Preprocessing},
    }
 
 This project is supported by the following institutions:
@@ -108,29 +107,41 @@ which is no longer maintained.
    :target: https://pypi.org/project/torchio/
    :alt: PyPI version
 
+.. |Conda-version| image:: https://img.shields.io/conda/v/conda-forge/torchio.svg?label=conda-forge&logo=conda-forge
+   :target: https://anaconda.org/conda-forge/torchio
+   :alt: Conda version
+
 .. |Google-Colab-notebook| image:: https://colab.research.google.com/assets/colab-badge.svg
-   :target: https://github.com/fepegar/torchio/blob/master/notebooks/README.md
+   :target: https://github.com/fepegar/torchio/blob/main/tutorials/README.md
    :alt: Google Colab notebooks
 
 .. |Docs-status| image:: https://img.shields.io/readthedocs/torchio?label=Docs&logo=Read%20the%20Docs
    :target: http://torchio.rtfd.io/?badge=latest
    :alt: Documentation status
 
-.. |Build-status| image:: https://img.shields.io/travis/fepegar/torchio/master.svg?label=Travis%20CI%20build&logo=travis
-   :target: https://travis-ci.com/fepegar/torchio
-   :alt: Build status
+.. |Lint-status| image:: https://github.com/fepegar/torchio/actions/workflows/lint.yml/badge.svg
+   :target: https://github.com/fepegar/torchio/actions/workflows/lint.yml
+   :alt: Lint status
 
-.. |Coverage-codecov| image:: https://codecov.io/gh/fepegar/torchio/branch/master/graphs/badge.svg
+.. |Tests-status| image:: https://github.com/fepegar/torchio/actions/workflows/tests.yml/badge.svg
+   :target: https://github.com/fepegar/torchio/actions/workflows/tests.yml
+   :alt: Tests status
+
+.. |Coverage-codecov| image:: https://codecov.io/gh/fepegar/torchio/branch/main/graphs/badge.svg
    :target: https://codecov.io/github/fepegar/torchio
    :alt: Coverage status
 
 .. |Code-Quality| image:: https://img.shields.io/scrutinizer/g/fepegar/torchio.svg?label=Code%20quality&logo=scrutinizer
-   :target: https://scrutinizer-ci.com/g/fepegar/torchio/?branch=master
+   :target: https://scrutinizer-ci.com/g/fepegar/torchio/?branch=main
    :alt: Code quality
 
 .. |Slack| image:: https://img.shields.io/badge/TorchIO-Join%20on%20Slack-blueviolet?style=flat&logo=slack
    :target: https://join.slack.com/t/torchioworkspace/shared_invite/zt-exgpd5rm-BTpxg2MazwiiMDw7X9xMFg
    :alt: Slack
+
+.. |Twitter| image:: https://img.shields.io/twitter/url/https/twitter.com/TorchIOLib.svg?style=social&label=Follow%20%40TorchIOLib
+   :target: https://twitter.com/TorchIOLib
+   :alt: Twitter
 
 .. |Code-Maintainability| image:: https://api.codeclimate.com/v1/badges/518673e49a472dd5714d/maintainability
    :target: https://codeclimate.com/github/fepegar/torchio/maintainability
