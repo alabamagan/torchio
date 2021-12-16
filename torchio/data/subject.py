@@ -278,7 +278,8 @@ class Subject(dict):
                     message = message.format(
                         pprint.pformat({
                             first_image: first_attribute,
-                            image_name: current_attribute
+                            image_name: current_attribute,
+                            'path': image.path,
                         }),
                     )
                     raise RuntimeError(message)
