@@ -58,3 +58,6 @@ class RandomTransform(Transform):
         for (a, b) in zip(params[::2], params[1::2]):
             results.append(self.sample_uniform(a, b))
         return torch.Tensor(results)
+
+    def reset_random_state(self):
+        torch.random.seed()
