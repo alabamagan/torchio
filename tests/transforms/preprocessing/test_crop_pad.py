@@ -185,3 +185,31 @@ class TestCropOrPad(TorchioTestCase):
     def test_no_target(self):
         crop_with_mask = tio.CropOrPad(mask_name='label')
         crop_with_mask(self.sample_subject)
+
+    def test_crop_pad_sides(self):
+        target_shape = 8, 22, 30
+
+        # padded rows are all put ahead the original image
+        transform = tio.CropOrPad(target_shape, crop_pad_sides="hhh")
+        transformed = transform(self.sample_subject)
+        for key in transformed:
+            result_shape = transformed[key].spatial_shape
+            self.assertEqual(target_shape, result_shape)
+            # assert that cropping was done properly
+            self.assertTrue(np.isclose(transformed['t1'].numpy()[0, :, 2:],
+                            self.sample_subject['t1'].numpy()[0, 2:]).all())
+            # assert that padding was done properly
+            self.assertTrue(np.isclose(transformed['t1'].numpy()[0, :, :2].sum(), 0))
+
+        # padded rows are all put after the original image
+        transform = tio.CropOrPad(target_shape, crop_pad_sides="ttt")
+        transformed = transform(self.sample_subject)
+        for key in transformed:
+            result_shape = transformed[key].spatial_shape
+            self.assertEqual(target_shape, result_shape)
+
+            # assert that cropping was done properly
+            self.assertTrue(np.isclose(transformed['t1'].numpy()[0, :, :-2],
+                            self.sample_subject['t1'].numpy()[0, :-2]).all())
+            # asser that the padding was done properly
+            self.assertTrue(np.isclose(transformed['t1'].numpy()[0, :, -2:].sum(), 0))

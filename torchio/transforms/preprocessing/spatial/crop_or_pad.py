@@ -2,6 +2,7 @@ import warnings
 from typing import Union, Tuple, Optional, Sequence
 
 import numpy as np
+import re
 
 from .pad import Pad
 from .crop import Crop
@@ -30,6 +31,10 @@ class CropOrPad(BoundsTransform):
             :attr:`mask_name`.
         labels: If a label map is used to generate the mask, sequence of labels
             to consider.
+        crop_pad_sides: If crop or pad is required, calculate the padding by considering
+            whether the "head", "center" or "tail" of each axis is cropped/padded. Default 
+            is set to "ccc", representing the two sides are cropped/padded equally. This
+            option is ignored :attr:`mask_name` was not ``None``.
         **kwargs: See :class:`~torchio.transforms.Transform` for additional
             keyword arguments.
 
@@ -71,6 +76,7 @@ class CropOrPad(BoundsTransform):
             padding_mode: Union[str, float] = 0,
             mask_name: Optional[str] = None,
             labels: Optional[Sequence[int]] = None,
+            crop_pad_sides: Optional[str] = "ccc",
             **kwargs
             ):
         if target_shape is None and mask_name is None:
@@ -100,8 +106,17 @@ class CropOrPad(BoundsTransform):
                 )
                 raise ValueError(message)
             self.compute_crop_or_pad = self._compute_mask_center_crop_or_pad
+        if re.match("[htc]{3}", crop_pad_sides) is None:
+            message = (
+                'The option crop_pad_sides must be a string with 3 characters in '
+                'either "h" for "head", "c" for "center" or "t" for "tail", but'
+                f' got {crop_pad_sides} instead.'
+            )
+            raise ValueError(message)
+
         self.mask_name = mask_name
         self.labels = labels
+        self.crop_pad_sides = crop_pad_sides
 
     @staticmethod
     def _bbox_mask(mask_volume: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -125,6 +140,7 @@ class CropOrPad(BoundsTransform):
     @staticmethod
     def _get_six_bounds_parameters(
             parameters: np.ndarray,
+            crop_pad_sides: Optional[str] = "ccc"
             ) -> TypeSixBounds:
         r"""Compute bounds parameters for ITK filters.
 
@@ -144,8 +160,13 @@ class CropOrPad(BoundsTransform):
         """  # noqa: E501
         parameters = parameters / 2
         result = []
-        for number in parameters:
-            ini, fin = int(np.ceil(number)), int(np.floor(number))
+        for d, number in enumerate(parameters):
+            if crop_pad_sides[d] == "c":
+                ini, fin = int(np.ceil(number)), int(np.floor(number))
+            elif crop_pad_sides[d] == "h":
+                ini, fin = int(number * 2), 0
+            elif crop_pad_sides[d] == "t":
+                ini, fin = 0, int(number * 2)
             result.extend([ini, fin])
         return tuple(result)
 
@@ -162,13 +183,13 @@ class CropOrPad(BoundsTransform):
 
         cropping = -np.minimum(diff_shape, 0)
         if cropping.any():
-            cropping_params = self._get_six_bounds_parameters(cropping)
+            cropping_params = np.asarray(self._get_six_bounds_parameters(cropping, self.crop_pad_sides))
         else:
             cropping_params = None
 
         padding = np.maximum(diff_shape, 0)
         if padding.any():
-            padding_params = self._get_six_bounds_parameters(padding)
+            padding_params = np.asarray(self._get_six_bounds_parameters(padding, self.crop_pad_sides))
         else:
             padding_params = None
 
