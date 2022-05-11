@@ -1,8 +1,8 @@
-import random
 import warnings
 from itertools import islice
 from typing import List, Iterator, Optional
 
+import torch
 import humanize
 from tqdm import trange
 from torch.utils.data import Dataset, DataLoader
@@ -30,8 +30,8 @@ class Queue(Dataset):
     The sampled patches are then stored in a buffer or *queue* until
     the next training iteration, at which point they are loaded onto the GPU
     for inference.
-    For this, TorchIO provides the :class:`~torchio.data.Queue` class, which also
-    inherits from the PyTorch :class:`~torch.utils.data.Dataset`.
+    For this, TorchIO provides the :class:`~torchio.data.Queue` class, which
+    also inherits from the PyTorch :class:`~torch.utils.data.Dataset`.
     In this queueing system,
     samplers behave as generators that yield patches from random locations
     in volumes contained in the :class:`~torchio.data.SubjectsDataset`.
@@ -92,7 +92,7 @@ class Queue(Dataset):
     .. raw:: html
 
         <embed>
-            <iframe style="width: 640px; height: 360px; overflow: hidden;" scrolling="no" frameborder="0" src="https://editor.p5js.org/embed/DZwjZzkkV"></iframe>
+            <iframe style="width: 640px; height: 360px; overflow: hidden;" scrolling="no" frameborder="0" src="https://editor.p5js.org/fepegar/full/DZwjZzkkV"></iframe>
         </embed>
 
     .. note:: :attr:`num_workers` refers to the number of workers used to
@@ -119,7 +119,11 @@ class Queue(Dataset):
     ...     sampler,
     ...     num_workers=4,
     ... )
-    >>> patches_loader = DataLoader(patches_queue, batch_size=16)
+    >>> patches_loader = DataLoader(
+    ...     patches_queue,
+    ...     batch_size=16,
+    ...     num_workers=0,  # this must be 0
+    ... )
     >>> num_epochs = 2
     >>> model = torch.nn.Identity()
     >>> for epoch_index in range(num_epochs):
@@ -181,7 +185,7 @@ class Queue(Dataset):
 
     def _print(self, *args):
         if self.verbose:
-            print(*args)  # noqa: T001
+            print(*args)  # noqa: T201
 
     def _initialize_subjects_iterable(self):
         self._subjects_iterable = self._get_subjects_iterable()
@@ -231,7 +235,11 @@ class Queue(Dataset):
             patches = list(islice(iterable, self.samples_per_volume))
             self.patches_list.extend(patches)
         if self.shuffle_patches:
-            random.shuffle(self.patches_list)
+            self._shuffle_patches_list()
+
+    def _shuffle_patches_list(self):
+        indices = torch.randperm(self.num_patches)
+        self.patches_list = [self.patches_list[i] for i in indices]
 
     def _get_next_subject(self) -> Subject:
         # A StopIteration exception is expected when the queue is empty
@@ -241,6 +249,13 @@ class Queue(Dataset):
             self._print('Queue is empty:', exception)
             self._initialize_subjects_iterable()
             subject = next(self.subjects_iterable)
+        except AssertionError as exception:
+            if 'can only test a child process' in str(exception):
+                message = (
+                    'The number of workers for the data loader used to pop'
+                    ' patches from the queue should be 0. Is it?'
+                )
+                raise RuntimeError(message) from exception
         return subject
 
     @staticmethod

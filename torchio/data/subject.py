@@ -40,7 +40,7 @@ class Subject(dict):
         ... }
         >>> subject = tio.Subject(subject_dict)
 
-    """
+    """  # noqa: E501
 
     def __init__(self, *args, **kwargs: Dict[str, Any]):
         if args:
@@ -82,7 +82,7 @@ class Subject(dict):
     def _parse_images(images: List[Tuple[str, Image]]) -> None:
         # Check that it's not empty
         if not images:
-            raise ValueError('A subject without images cannot be created')
+            raise TypeError('A subject without images cannot be created')
 
     @property
     def shape(self):
@@ -90,7 +90,7 @@ class Subject(dict):
 
         Consistency of shapes across images in the subject is checked first.
 
-        Example::
+        Example:
 
             >>> import torchio as tio
             >>> colin = tio.datasets.Colin27()
@@ -108,7 +108,7 @@ class Subject(dict):
         Consistency of spatial shapes across images in the subject is checked
         first.
 
-        Example::
+        Example:
 
             >>> import torchio as tio
             >>> colin = tio.datasets.Colin27()
@@ -124,7 +124,7 @@ class Subject(dict):
 
         Consistency of spacings across images in the subject is checked first.
 
-        Example::
+        Example:
 
             >>> import torchio as tio
             >>> colin = tio.datasets.Slicer()
@@ -182,7 +182,7 @@ class Subject(dict):
             warn: bool = True,
             ignore_intensity: bool = True,
             image_interpolation: Optional[str] = None,
-            ) ->  'Compose':
+            ) -> 'Compose':
         """Get a reversed list of the inverses of the applied transforms.
 
         Args:
@@ -251,7 +251,7 @@ class Subject(dict):
             attribute of two images being compared,
             :math:`t_{abs}` is the ``absolute_tolerance`` and
             :math:`t_{rel}` is the ``relative_tolerance``.
-        """
+        """  # noqa: E501
         message = (
             f'More than one value for "{attribute}" found in subject images:'
             '\n{}'
@@ -313,7 +313,7 @@ class Subject(dict):
                 'As described above, some images in the subject are not in the'
                 ' same space. You probably can use the transforms ToCanonical'
                 ' and Resample to fix this, as explained at'
-                ' https://github.com/fepegar/torchio/issues/647#issuecomment-913025695'
+                ' https://github.com/fepegar/torchio/issues/647#issuecomment-913025695'  # noqa: E501
             )
             raise RuntimeError(message) from e
 
@@ -355,7 +355,6 @@ class Subject(dict):
     def get_first_image(self) -> Image:
         return self.get_images(intensity_only=False)[0]
 
-    # flake8: noqa: F821
     def add_transform(
             self,
             transform: 'Transform',
@@ -372,13 +371,31 @@ class Subject(dict):
         # This allows to get images using attribute notation, e.g. subject.t1
         self.__dict__.update(self)
 
+    @staticmethod
+    def _check_image_name(image_name):
+        if not isinstance(image_name, str):
+            message = (
+                'The image name must be a string,'
+                f' but it has type "{type(image_name)}"'
+            )
+            raise ValueError(message)
+        return image_name
+
     def add_image(self, image: Image, image_name: str) -> None:
-        """Add an image."""
+        """Add an image to the subject instance."""
+        if not isinstance(image, Image):
+            message = (
+                'Image must be an instance of torchio.Image,'
+                f' but its type is "{type(image)}"'
+            )
+            raise ValueError(message)
+        self._check_image_name(image_name)
         self[image_name] = image
         self.update_attributes()
 
     def remove_image(self, image_name: str) -> None:
-        """Remove an image."""
+        """Remove an image from the subject instance."""
+        self._check_image_name(image_name)
         del self[image_name]
         delattr(self, image_name)
 

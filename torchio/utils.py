@@ -1,4 +1,6 @@
 import ast
+import os
+import sys
 import gzip
 import shutil
 import tempfile
@@ -82,7 +84,7 @@ def create_dummy_dataset(
         images_dir.mkdir(exist_ok=True, parents=True)
         labels_dir.mkdir(exist_ok=True, parents=True)
         if verbose:
-            print('Creating dummy dataset...')  # noqa: T001
+            print('Creating dummy dataset...')  # noqa: T201
             iterable = trange(num_images)
         else:
             iterable = range(num_images)
@@ -124,7 +126,7 @@ def apply_transform_to_file(
     transformed = transform(subject)
     transformed.image.save(output_path)
     if verbose and transformed.history:
-        print('Applied transform:', transformed.history[0])  # noqa: T001
+        print('Applied transform:', transformed.history[0])  # noqa: T201
 
 
 def guess_type(string: str) -> Any:
@@ -249,11 +251,15 @@ def get_subjects_from_batch(batch: Dict) -> List:
             data = image_dict[constants.DATA][i]
             affine = image_dict[constants.AFFINE][i]
             path = Path(image_dict[constants.PATH][i])
-            is_label = image_dict[constants.TYPE] == constants.LABEL
+            is_label = image_dict[constants.TYPE][i] == constants.LABEL
             klass = LabelMap if is_label else ScalarImage
             image = klass(tensor=data, affine=affine, filename=path.name)
             subject_dict[image_name] = image
         subject = Subject(subject_dict)
+        if constants.HISTORY in batch:
+            applied_transforms = batch[constants.HISTORY][i]
+            for transform in applied_transforms:
+                transform.add_transform_to_subject_history(subject)
         subjects.append(subject)
     return subjects
 
@@ -289,3 +295,63 @@ def add_images_from_batch(
             kwargs['filename'] = one_image['filename']
         image = class_(**kwargs)
         subject.add_image(image, name)
+
+
+def guess_external_viewer() -> Optional[Path]:
+    """Guess the path to an executable that could be used to visualize images.
+
+    Currently, it looks for 1) ITK-SNAP and 2) 3D Slicer. Implemented for macOS
+    and Windows.
+    """
+    if 'SITK_SHOW_COMMAND' in os.environ:
+        return os.environ['SITK_SHOW_COMMAND']
+    platform = sys.platform
+    itk = 'ITK-SNAP'
+    slicer = 'Slicer'
+    if platform == 'darwin':
+        app_path = '/Applications/{}.app/Contents/MacOS/{}'  # noqa: FS003
+        itk_snap_path = Path(app_path.format(2 * (itk,)))
+        if itk_snap_path.is_file():
+            return itk_snap_path
+        slicer_path = Path(app_path.format(2 * (slicer,)))
+        if slicer_path.is_file():
+            return slicer_path
+    elif platform == 'win32':
+        program_files_dir = Path(os.environ['ProgramW6432'])
+        itk_snap_dirs = list(program_files_dir.glob('ITK-SNAP*'))
+        if itk_snap_dirs:
+            itk_snap_dir = itk_snap_dirs[-1]
+            itk_snap_path = itk_snap_dir / 'bin/itk-snap.exe'
+            if itk_snap_path.is_file():
+                return itk_snap_path
+        slicer_dirs = list(program_files_dir.glob('Slicer*'))
+        if slicer_dirs:
+            slicer_dir = slicer_dirs[-1]
+            slicer_path = slicer_dir / 'slicer.exe'
+            if slicer_path.is_file():
+                return slicer_path
+    elif 'linux' in platform:
+        itk_snap_path = shutil.which('itksnap')
+        if itk_snap_path is not None:
+            return Path(itk_snap_path)
+        slicer_path = shutil.which('Slicer')
+        if slicer_path is not None:
+            return Path(slicer_path)
+
+
+def parse_spatial_shape(shape):
+    result = to_tuple(shape, length=3)
+    for n in result:
+        if n < 1 or n % 1:
+            message = (
+                'All elements in a spatial shape must be positive integers,'
+                f' but the following shape was passed: {shape}'
+            )
+            raise ValueError(message)
+    if len(result) != 3:
+        message = (
+            'Spatial shapes must have 3 elements, but the following shape'
+            f' was passed: {shape}'
+        )
+        raise ValueError(message)
+    return result

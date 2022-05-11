@@ -1,6 +1,6 @@
 import warnings
 from pathlib import Path
-from collections.abc import Iterable
+from collections import Counter
 from typing import Any, Dict, Tuple, Optional, Union, Sequence, List, Callable
 
 import torch
@@ -10,10 +10,11 @@ import nibabel as nib
 import SimpleITK as sitk
 from deprecated import deprecated
 
-from ..utils import get_stem
+from ..utils import get_stem, guess_external_viewer
 from ..typing import (
-    TypeData,
     TypePath,
+    TypeData,
+    TypeDataAffine,
     TypeTripletInt,
     TypeTripletFloat,
     TypeDirection3D,
@@ -97,7 +98,10 @@ class Image(dict):
         >>> image
         ScalarImage(shape: (1, 256, 256, 176); spacing: (1.00, 1.00, 1.00); orientation: PIR+; memory: 44.0 MiB; type: intensity)
         >>> image.save('doubled_image.nii.gz')
-        >>> numpy_reader = lambda path: np.load(path), np.eye(4)
+        >>> def numpy_reader(path):
+        ...     data = np.load(path).as_type(np.float32)
+        ...     affine = np.eye(4)
+        ...     return data, affine
         >>> image = tio.ScalarImage('t1.npy', reader=numpy_reader)
 
     .. _lazy loaders: https://en.wikipedia.org/wiki/Lazy_loading
@@ -109,11 +113,11 @@ class Image(dict):
     .. _FSL docs: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/Orientation%20Explained
     .. _SimpleITK docs: https://simpleitk.readthedocs.io/en/master/fundamentalConcepts.html
     .. _Graham Wideman's website: http://www.grahamwideman.com/gw/brain/orientation/orientterms.htm
-    """
+    """  # noqa: E501
     def __init__(
             self,
             path: Union[TypePath, Sequence[TypePath], None] = None,
-            type: str = None,
+            type: str = None,  # noqa: A002
             tensor: Optional[TypeData] = None,
             affine: Optional[TypeData] = None,
             check_nans: bool = False,  # removed by ITK by default
@@ -126,10 +130,10 @@ class Image(dict):
         if type is None:
             warnings.warn(
                 'Not specifying the image type is deprecated and will be'
-                ' mandatory in the future. You can probably use tio.ScalarImage'
-                ' or tio.LabelMap instead',
+                ' mandatory in the future. You can probably use'
+                ' tio.ScalarImage or tio.LabelMap instead'
             )
-            type = INTENSITY
+            type = INTENSITY  # noqa: A001
 
         if path is None and tensor is None:
             raise ValueError('A value for path or tensor must be given')
@@ -169,7 +173,8 @@ class Image(dict):
         ])
         if self._loaded:
             properties.append(f'dtype: {self.data.type()}')
-            properties.append(f'memory: {humanize.naturalsize(self.memory, binary=True)}')
+            natural = humanize.naturalsize(self.memory, binary=True)
+            properties.append(f'memory: {natural}')
         else:
             properties.append(f'path: "{self.path}"')
 
@@ -187,14 +192,15 @@ class Image(dict):
         return self.data.numpy()
 
     def __copy__(self):
-        kwargs = dict(
-            tensor=self.data,
-            affine=self.affine,
-            type=self.type,
-            path=self.path,
-        )
+        kwargs = {
+            'tensor': self.data,
+            'affine': self.affine,
+            'type': self.type,
+            'path': self.path,
+        }
         for key, value in self.items():
-            if key in PROTECTED_KEYS: continue
+            if key in PROTECTED_KEYS:
+                continue
             kwargs[key] = value  # should I copy? deepcopy?
         return self.__class__(**kwargs)
 
@@ -226,7 +232,7 @@ class Image(dict):
         """Affine matrix to transform voxel indices into world coordinates."""
         # If path is a dir (probably DICOM), just load the data
         # Same if it's a list of paths (used to create a 4D image)
-        if self._loaded or (isinstance(self.path, Path) and self.path.is_dir()):
+        if self._loaded or self._is_dir() or self._is_multipath():
             affine = self[AFFINE]
         else:
             affine = read_affine(self.path)
@@ -237,7 +243,7 @@ class Image(dict):
         self[AFFINE] = self._parse_affine(matrix)
 
     @property
-    def type(self) -> str:
+    def type(self) -> str:  # noqa: A003
         return self[TYPE]
 
     @property
@@ -307,7 +313,7 @@ class Image(dict):
 
     @property
     def bounds(self) -> np.ndarray:
-        """Position of centers of voxels in smallest and largest coordinates."""
+        """Position of centers of voxels in smallest and largest indices."""
         ini = 0, 0, 0
         fin = np.array(self.spatial_shape) - 1
         point_ini = nib.affines.apply_affine(self.affine, ini)
@@ -356,19 +362,21 @@ class Image(dict):
             index = -3 + index
             return index
 
-    # flake8: noqa: E701
     @staticmethod
     def flip_axis(axis: str) -> str:
-        if axis == 'R': flipped_axis = 'L'
-        elif axis == 'L': flipped_axis = 'R'
-        elif axis == 'A': flipped_axis = 'P'
-        elif axis == 'P': flipped_axis = 'A'
-        elif axis == 'I': flipped_axis = 'S'
-        elif axis == 'S': flipped_axis = 'I'
-        elif axis == 'T': flipped_axis = 'B'  # top / bottom
-        elif axis == 'B': flipped_axis = 'T'
-        else:
-            values = ', '.join('LRPAISTB')
+        """Return the opposite axis label. For example, ``'L'`` -> ``'R'``.
+
+        Args:
+            axis: Axis label, such as ``'L'`` or ``'left'``.
+        """
+        labels = 'LRPAISTBDV'
+        first = labels[::2]
+        last = labels[1::2]
+        flip_dict = {a: b for a, b in zip(first + last, last + first)}
+        axis = axis[0].upper()
+        flipped_axis = flip_dict.get(axis)
+        if flipped_axis is None:
+            values = ', '.join(labels)
             message = f'Axis not understood. Please use one of: {values}'
             raise ValueError(message)
         return flipped_axis
@@ -416,7 +424,10 @@ class Image(dict):
             ) -> Optional[Union[Path, List[Path]]]:
         if path is None:
             return None
-        if isinstance(path, Iterable) and not isinstance(path, str):
+        elif isinstance(path, dict):
+            # https://github.com/fepegar/torchio/pull/838
+            raise TypeError('The path argument cannot be a dictionary')
+        elif self._is_paths_sequence(path):
             return [self._parse_single_path(p) for p in path]
         else:
             return self._parse_single_path(path)
@@ -446,7 +457,7 @@ class Image(dict):
         if tensor.dtype == torch.bool:
             tensor = tensor.to(torch.uint8)
         if self.check_nans and torch.isnan(tensor).any():
-            warnings.warn(f'NaNs found in tensor', RuntimeWarning)
+            warnings.warn('NaNs found in tensor', RuntimeWarning)
         return tensor
 
     @staticmethod
@@ -460,10 +471,33 @@ class Image(dict):
         if isinstance(affine, torch.Tensor):
             affine = affine.numpy()
         if not isinstance(affine, np.ndarray):
-            raise TypeError(f'Affine must be a NumPy array, not {type(affine)}')
+            bad_type = type(affine)
+            raise TypeError(f'Affine must be a NumPy array, not {bad_type}')
         if affine.shape != (4, 4):
-            raise ValueError(f'Affine shape must be (4, 4), not {affine.shape}')
+            bad_shape = affine.shape
+            raise ValueError(f'Affine shape must be (4, 4), not {bad_shape}')
         return affine.astype(np.float64)
+
+    @staticmethod
+    def _is_paths_sequence(path):
+        is_string = isinstance(path, str)
+        try:
+            is_iterable = iter(path)
+        except TypeError:
+            is_iterable = False
+        return is_iterable and not is_string
+
+    def _is_multipath(self):
+        return self._is_paths_sequence(self.path)
+
+    def _is_dir(self):
+        is_sequence = self._is_multipath()
+        if is_sequence:
+            return False
+        elif self.path is None:
+            return False
+        else:
+            return self.path.is_dir()
 
     def load(self) -> None:
         r"""Load the image from disk.
@@ -475,7 +509,7 @@ class Image(dict):
         """
         if self._loaded:
             return
-        paths = self.path if isinstance(self.path, list) else [self.path]
+        paths = self.path if self._is_multipath() else [self.path]
         tensor, affine = self.read_and_check(paths[0])
         tensors = [tensor]
         for path in paths[1:]:
@@ -501,11 +535,11 @@ class Image(dict):
         self.affine = affine
         self._loaded = True
 
-    def read_and_check(self, path: TypePath) -> Tuple[torch.Tensor, np.ndarray]:
+    def read_and_check(self, path: TypePath) -> TypeDataAffine:
         tensor, affine = self.reader(path)
-        # Cast to uint8 for LabelMap to save RAM
-        if self.type == LABEL:
-            tensor = tensor.type(torch.uint8)
+        # Make sure the data type is compatible with PyTorch
+        if self.reader is not read_image and isinstance(tensor, np.ndarray):
+            tensor = check_uint_to_int(tensor)
         tensor = self._parse_tensor_shape(tensor)
         tensor = self._parse_tensor(tensor)
         affine = self._parse_affine(affine)
@@ -553,7 +587,7 @@ class Image(dict):
             >>> sitk_image = sitk.Image((224, 224), sitk.sitkVectorFloat32, 3)
             >>> tio.ScalarImage.from_sitk(sitk_image)
             ScalarImage(shape: (3, 224, 224, 1); spacing: (1.00, 1.00, 1.00); orientation: LPS+; memory: 588.0 KiB; dtype: torch.FloatTensor)
-        """
+        """  # noqa: E501
         tensor, affine = sitk_to_nib(sitk_image)
         return cls(tensor=tensor, affine=affine)
 
@@ -595,7 +629,7 @@ class Image(dict):
             rescale: bool = True,
             optimize: bool = True,
             reverse: bool = False,
-        ) -> None:
+            ) -> None:
         """Save an animated GIF of the image.
 
         Args:
@@ -650,6 +684,41 @@ class Image(dict):
             from ..visualization import plot_volume  # avoid circular import
             plot_volume(self, **kwargs)
 
+    def show(self, viewer_path: Optional[TypePath] = None) -> None:
+        """Open the image using external software.
+
+        Args:
+            viewer_path: Path to the application used to view the image. If
+                ``None``, the value of the environment variable
+                ``SITK_SHOW_COMMAND`` will be used. If this variable is also
+                not set, TorchIO will try to guess the location of
+                `ITK-SNAP <http://www.itksnap.org/pmwiki/pmwiki.php>`_ and
+                `3D Slicer <https://www.slicer.org/>`_.
+
+        Raises:
+            RuntimeError: If the viewer is not found.
+        """
+        sitk_image = self.as_sitk()
+        image_viewer = sitk.ImageViewer()
+        # This is so that 3D Slicer creates segmentation nodes from label maps
+        if self.__class__.__name__ == 'LabelMap':
+            image_viewer.SetFileExtension('.seg.nrrd')
+        if viewer_path is not None:
+            image_viewer.SetApplication(str(viewer_path))
+        try:
+            image_viewer.Execute(sitk_image)
+        except RuntimeError as e:
+            viewer_path = guess_external_viewer()
+            if viewer_path is None:
+                message = (
+                    'No external viewer has been found. Please set the'
+                    ' environment variable SITK_SHOW_COMMAND to a viewer of'
+                    ' your choice'
+                )
+                raise RuntimeError(message) from e
+            image_viewer.SetApplication(str(viewer_path))
+            image_viewer.Execute(sitk_image)
+
 
 class ScalarImage(Image):
     """Image whose pixel values represent scalars.
@@ -679,6 +748,12 @@ class ScalarImage(Image):
         kwargs.update({'type': INTENSITY})
         super().__init__(*args, **kwargs)
 
+    def hist(self, **kwargs) -> None:
+        """Plot histogram."""
+        from ..visualization import plot_histogram
+        x = self.data.flatten().numpy()
+        plot_histogram(x, **kwargs)
+
 
 class LabelMap(Image):
     """Image whose pixel values represent categorical labels.
@@ -707,3 +782,14 @@ class LabelMap(Image):
             raise ValueError('Type of LabelMap is always torchio.LABEL')
         kwargs.update({'type': LABEL})
         super().__init__(*args, **kwargs)
+
+    def count_nonzero(self) -> int:
+        """Get the number of voxels that are not 0."""
+        return self.data.count_nonzero().item()
+
+    def count_labels(self) -> Dict[int, int]:
+        """Get the number of voxels in each label."""
+        values_list = self.data.flatten().tolist()
+        counter = Counter(values_list)
+        counts = {label: counter[label] for label in sorted(counter)}
+        return counts

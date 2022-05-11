@@ -10,9 +10,15 @@ with open('README.md', encoding='utf8') as readme_file:
 with open('HISTORY.rst', encoding='utf8') as history_file:
     history = history_file.read()
 
+simple_itk_suffixes = (
+    '!=2.0.*',  # https://github.com/SimpleITK/SimpleITK/issues/1239
+    '!=2.1.1.1',  # https://github.com/fepegar/torchio/runs/5952172467
+)
+simple_itk_versions = ','.join(simple_itk_suffixes)
+
 requirements = [
     'Deprecated',
-    'SimpleITK!=2.0.*',  # https://github.com/SimpleITK/SimpleITK/issues/1239
+    f'SimpleITK{simple_itk_versions}',
     'click',
     'humanize',
     'nibabel',
@@ -36,6 +42,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Typing :: Typed',
     ],
     description=(
         'Tools for loading, augmenting and writing 3D medical images'
@@ -58,11 +65,12 @@ setup(
     include_package_data=True,
     keywords='torchio',
     name='torchio',
+    package_data={'torchio': ['py.typed']},
     packages=find_packages(include=['torchio', 'torchio.*']),
     setup_requires=[],
     test_suite='tests',
     tests_require=[],
     url='https://github.com/fepegar/torchio',
-    version='0.18.61',
+    version='0.18.76',
     zip_safe=False,
 )
