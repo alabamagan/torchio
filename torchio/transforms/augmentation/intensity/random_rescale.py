@@ -33,7 +33,7 @@ class RandomRescale(RandomTransform, IntensityTransform):
             self,
             mean: Union[float, Tuple[float, float]] = (-100, 100),
             std: Union[float, Tuple[float, float]] = (1, 255),
-            masking_method: str = None,
+            masking_method: str = 'bg_value',
             bg_value: float = None,
             label: str = None,
             **kwargs
