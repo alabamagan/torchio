@@ -1,7 +1,9 @@
 import copy
 import torch
+import pytest
 import numpy as np
 import torchio as tio
+import nibabel as nib
 import SimpleITK as sitk
 from ..utils import TorchioTestCase
 
@@ -322,3 +324,44 @@ class TestTransform(TorchioTestCase):
         mask = transform.get_mask_from_bounds(3 * (0, 1), tensor)
         assert mask[0, 0, 0, 0] == 1
         assert mask.sum() == 1
+
+    def test_label_keys(self):
+        # Adapted from the issue in which the feature was requested:
+        # https://github.com/fepegar/torchio/issues/866#issue-1222255576
+        size = 1, 10, 10, 10
+        image = torch.rand(size)
+        num_classes = 2  # excluding background
+        label = torch.randint(num_classes + 1, size)
+
+        data_dict = {'image': image, 'label': label}
+
+        transform = tio.RandomAffine(
+            include=['image', 'label'],
+            label_keys=['label'],
+        )
+        transformed_label = transform(data_dict)['label']
+
+        # If the image is indeed transformed as a label map, nearest neighbor
+        # interpolation is used by default and therefore no intermediate values
+        # can exist in the output
+        num_unique_values = len(torch.unique(transformed_label))
+        assert num_unique_values <= num_classes + 1
+
+    def test_nibabel_input(self):
+        image = self.sample_subject.t1
+        image_nib = nib.Nifti1Image(image.data[0].numpy(), image.affine)
+        transformed = tio.RandomAffine()(image_nib)
+        transformed.get_fdata()
+        transformed.affine
+
+        image = self.subject_4d.t1
+        tensor_5d = image.data[np.newaxis].permute(2, 3, 4, 0, 1)
+        image_nib = nib.Nifti1Image(tensor_5d.numpy(), image.affine)
+        transformed = tio.RandomAffine()(image_nib)
+        transformed.get_fdata()
+        transformed.affine
+
+    def test_bad_shape(self):
+        tensor = torch.rand(1, 2, 3)
+        with pytest.raises(ValueError, match='must be a 4D tensor'):
+            tio.RandomAffine()(tensor)

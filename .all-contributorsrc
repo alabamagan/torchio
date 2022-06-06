@@ -552,6 +552,43 @@
       "contributions": [
         "ideas"
       ]
+    },
+    {
+      "login": "AyedSamy",
+      "name": "AyedSamy",
+      "avatar_url": "https://avatars.githubusercontent.com/u/55320208?v=4",
+      "profile": "https://github.com/AyedSamy",
+      "contributions": [
+        "bug"
+      ]
+    },
+    {
+      "login": "jmlipman",
+      "name": "J. Miguel Valverde",
+      "avatar_url": "https://avatars.githubusercontent.com/u/3540650?v=4",
+      "profile": "http://delanover.com",
+      "contributions": [
+        "ideas",
+        "code"
+      ]
+    },
+    {
+      "login": "josegcpa",
+      "name": "José Guilherme Almeida",
+      "avatar_url": "https://avatars.githubusercontent.com/u/40271262?v=4",
+      "profile": "http://josegcpa.github.io",
+      "contributions": [
+        "ideas"
+      ]
+    },
+    {
+      "login": "saikhu",
+      "name": "Asim Usman",
+      "avatar_url": "https://avatars.githubusercontent.com/u/24922057?v=4",
+      "profile": "https://github.com/saikhu",
+      "contributions": [
+        "bug"
+      ]
     }
   ],
   "contributorsPerLine": 7,
