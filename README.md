@@ -110,8 +110,8 @@ This fork was made to cater for a number of missing functions that I used with t
 
 ---
 
-* Fix the default value for masking_method in random_rescale @43fa2a2
-* Add option to control which side (head, tail or equal) to pad when using the crop_or_pad filter @f374a91
-* Add an augmentation `RandomRescale` @279e3508
-* Add more supports to the inference using the weighted sampler @9826bc73
-* Add `max` mode for aggregator to piece patches together.
+* Fix the default value for masking_method in random_rescale 43fa2a2
+* Add option to control which side (head, tail or equal) to pad when using the crop_or_pad filter f374a91
+* Add an augmentation `RandomRescale` 279e3508
+* Add more supports to the inference using the weighted sampler 9826bc73 a8ac0931
+* Add `max` mode for aggregator to piece patches together. a8ac0931 1e1aa90b
