@@ -1,4 +1,5 @@
 from torchio import RandomMotion
+
 from ...utils import TorchioTestCase
 
 
@@ -12,7 +13,7 @@ class TestRandomMotion(TorchioTestCase):
         transform = RandomMotion(
             degrees=0,
             translation=0,
-            num_transforms=1
+            num_transforms=1,
         )
         transformed = transform(self.sample_subject)
         self.assertTensorAlmostEqual(
@@ -23,7 +24,7 @@ class TestRandomMotion(TorchioTestCase):
 
     def test_with_movement(self):
         transform = RandomMotion(
-            num_transforms=1
+            num_transforms=1,
         )
         transformed = transform(self.sample_subject)
         self.assertTensorNotEqual(
