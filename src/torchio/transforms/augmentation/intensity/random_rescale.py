@@ -62,7 +62,7 @@ class RandomRescale(RandomTransform, IntensityTransform):
     def get_params(self,
                    mean_range: Tuple[float, float],
                    std_range: Tuple[float, float]) -> float:
-        mean = self.sample_uniform(*mean_range).item()
+        mean = self.sample_uniform(*mean_range)
         std = self.sample_uniform(*std_range)
         return mean, std
 

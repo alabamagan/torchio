@@ -16,6 +16,7 @@ from .random_spike import RandomSpike
 from .random_spike import Spike
 from .random_swap import RandomSwap
 from .random_swap import Swap
+from .random_rescale import RandomRescale, Rescale
 
 
 __all__ = [
@@ -37,4 +38,6 @@ __all__ = [
     'BiasField',
     'RandomLabelsToImage',
     'LabelsToImage',
+    'RandomRescale',
+    'Rescale'
 ]

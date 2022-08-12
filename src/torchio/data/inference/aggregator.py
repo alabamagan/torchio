@@ -1,5 +1,5 @@
 import warnings
-from typing import Tuple, Optinoal
+from typing import Tuple, Optional
 
 import torch
 import numpy as np
