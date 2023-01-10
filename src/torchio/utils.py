@@ -118,6 +118,7 @@ def create_dummy_dataset(
             subject = Subject(
                 one_modality=ScalarImage(image_path),
                 segmentation=LabelMap(label_path),
+                index=str(i)
             )
             subjects.append(subject)
     return subjects

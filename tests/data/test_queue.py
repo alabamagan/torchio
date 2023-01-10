@@ -3,6 +3,9 @@ import torchio as tio
 from torch.utils.data import DataLoader
 from torchio.data import UniformSampler
 from torchio.utils import create_dummy_dataset
+import os
+import torch.distributed as dist
+import torch.multiprocessing as mp
 
 from ..utils import TorchioTestCase
 
@@ -106,3 +109,54 @@ class TestQueue(TorchioTestCase):
             sequential_idlist.extend(mb['ID'])
         self.assertEqual(list(range(len(subjects_dataset))),
                          sequential_idlist)
+
+
+class TestQueueDDP(TorchioTestCase):
+    def setUp(self):
+        if not torch.cuda.is_available():
+            raise unittest.SkipTest("No cuda device to test distributed queue.")
+
+        if torch.cuda.device_count() <= 1:
+            raise unittest.SkipTest("At list two cuda devices to test distributed queue.")
+
+        super(TestQueueDDP, self).setUp()
+        self.subjects_list = create_dummy_dataset(
+            num_images=10,
+            size_range=(10, 20),
+            directory=self.dir,
+            suffix='.nii',
+            force=False,
+        )
+
+        self.backbone = 'nccl'
+        self.world_size = torch.cuda.device_count()
+
+    @staticmethod
+    def run_queue(rank, subjects_list, backbone,world_size, num_workers=0):
+        os.environ['MASTER_ADDR'] = 'localhost'
+        os.environ['MASTER_PORT'] = '23455'
+        dist.init_process_group(backbone, world_size=world_size, rank=rank)
+        subjects_dataset = tio.SubjectsDataset(subjects_list)
+        patch_size = 10
+        sampler = UniformSampler(patch_size)
+        queue_dataset = tio.QueueDDP(
+            subjects_dataset,
+            max_length=6,
+            samples_per_volume=2,
+            sampler=sampler,
+            num_workers=num_workers,
+            num_of_replicas=world_size,
+            rank=rank
+        )
+        _ = str(queue_dataset)
+        batch_loader = DataLoader(queue_dataset, batch_size=4, drop_last=True)
+        for batch in batch_loader:
+            _ = batch['one_modality'][tio.DATA]
+            _ = batch['segmentation'][tio.DATA]
+        dist.destroy_process_group()
+        return queue_dataset
+
+    def test_ddp_run(self):
+        for i in range(self.world_size):
+            mp.spawn(TestQueueDDP.run_queue, args=(self.subjects_list, self.backbone, self.world_size, 4, ), nprocs=self.world_size)
+        pass

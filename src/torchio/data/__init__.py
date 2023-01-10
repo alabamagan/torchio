@@ -4,6 +4,7 @@ from .image import LabelMap
 from .image import ScalarImage
 from .inference import GridAggregator
 from .queue import Queue
+from .queue_ddp import QueueDDP
 from .sampler import GridSampler
 from .sampler import LabelSampler
 from .sampler import PatchSampler
@@ -14,6 +15,7 @@ from .subject import Subject
 
 __all__ = [
     'Queue',
+    'QueueDDP',
     'Subject',
     'SubjectsDataset',
     'Image',
