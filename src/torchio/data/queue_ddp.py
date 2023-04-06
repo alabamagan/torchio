@@ -64,5 +64,3 @@ class QueueDDP(Queue):
             subjects_dataset._subjects[self.rank:len(subjects_dataset):self.num_of_replicas],
             transform = subjects_dataset._transform
         )
-        self.subjects_dataset.shu
-        print([dd['index'] for dd in self.subjects_dataset])
