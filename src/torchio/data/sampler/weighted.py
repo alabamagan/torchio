@@ -198,7 +198,7 @@ class WeightedSampler(RandomSampler):
     ) -> Subject:
         i, j, k = self.get_random_index_ini(probability_map, cdf)
         index_ini = i, j, k
-        index_fin = index_ini.astype(int) + self.patch_size
+        index_fin = np.asarray(index_ini).astype(int) + np.asarray(self.patch_size)
         location = np.concatenate([index_ini, index_fin])
         si, sj, sk = self.patch_size
         patch_size = si, sj, sk
@@ -207,7 +207,7 @@ class WeightedSampler(RandomSampler):
             index_ini,
             patch_size,
         )
-        cropped_subject['index_ini'] = index_ini.astype(int)
+        cropped_subject['index_ini'] = np.asarray(index_ini).astype(int)
         cropped_subject[LOCATION] = location
         return cropped_subject
 
