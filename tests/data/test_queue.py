@@ -141,7 +141,7 @@ class TestQueueDDP(TorchioTestCase):
         dist.init_process_group(backbone, world_size=world_size, rank=rank)
         subjects_dataset = tio.SubjectsDataset(subjects_list)
         patch_size = 10
-        sampler = UniformSampler(patch_size)
+        sampler = UniformSampler(patch_size=patch_size)
         queue_dataset = tio.QueueDDP(
             subjects_dataset,
             max_length=6,
@@ -149,7 +149,8 @@ class TestQueueDDP(TorchioTestCase):
             sampler=sampler,
             num_workers=num_workers,
             num_of_replicas=world_size,
-            rank=rank
+            rank=rank,
+            shuffle_patches=False
         )
         _ = str(queue_dataset)
         batch_loader = DataLoader(queue_dataset, batch_size=4, drop_last=True)
