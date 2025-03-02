@@ -126,6 +126,7 @@ class CropOrPad(SpatialTransform):
         self.mask_name = mask_name
         self.labels = labels
         self.crop_pad_sides = crop_pad_sides
+        self.ops = None # This is decided at run time whether it's crop or pad.
 
     @staticmethod
     def _bbox_mask(mask_volume: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -300,9 +301,15 @@ class CropOrPad(SpatialTransform):
         padding_params, cropping_params = self.compute_crop_or_pad(subject)
         padding_kwargs = {'padding_mode': self.padding_mode}
         if padding_params is not None:
-            pad = Pad(padding_params, **padding_kwargs)
-            subject = pad(subject)  # type: ignore[assignment]
+            self.ops = Pad(padding_params, **padding_kwargs)
+            subject = self.ops(subject)  # type: ignore[assignment]
         if cropping_params is not None:
-            crop = Crop(cropping_params)
-            subject = crop(subject)  # type: ignore[assignment]
+            self.ops = Crop(cropping_params)
+            subject = self.ops(subject)  # type: ignore[assignment]
         return subject
+
+    def inverse(self):
+        if not self.ops is None:
+            return self.ops.inverse()
+        else:
+            raise RuntimeError("Cannot invert before actual operation.")
